@@ -69,7 +69,12 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IncludePath>C:\public\eigen-3.3.7;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IncludePath>C:\public\eigen-3.3.7;$(IncludePath)</IncludePath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -115,6 +120,19 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="addstr.h" />
+    <ClInclude Include="method.h" />
+    <ClInclude Include="Pro.h" />
+    <ClInclude Include="ProAnalysis.h" />
+    <ClInclude Include="read_pdb.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="addstr.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="method.cpp" />
+    <ClCompile Include="Pro.cpp" />
+    <ClCompile Include="ProAnalysis.cpp" />
+    <ClCompile Include="read_pdb.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
