@@ -147,3 +147,22 @@ Eigen::MatrixXd gen_distmat(Eigen::VectorXd coord)
 
 	return distmat;
 }
+
+void normal_equation(Eigen::VectorXd &coefficient, Eigen::MatrixXd X, Eigen::VectorXd Y)
+{
+	coefficient = (X.transpose() * X).inverse() * X.transpose() * Y;
+}
+
+// Batch Gradient Descent
+void BGD(Eigen::VectorXd &coeff, Eigen::MatrixXd X, Eigen::MatrixXd Y, double learning_rate, double convergence, size_t iterations)
+{
+	int ndim = coeff.size();
+	size_t count = 0;
+	for (size_t i = 0; i < iterations; ++i)
+	{
+		Eigen::VectorXd tmpCoeff = learning_rate / ndim * (X * coeff - Y).transpose() * X;
+		coeff -= tmpCoeff;
+		if (tmpCoeff.sum() < convergence * ndim)
+			break;
+	}
+}

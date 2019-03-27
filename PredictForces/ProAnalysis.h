@@ -191,8 +191,5 @@ private:
 	std::list<size_t> pocketS;
 	std::list<size_t> pocketA;
 	std::list<size_t> pocketAS;
-
-	size_t MAX_SCAN_RESN = 20;
-	double CUTOFF = 10.0;
 };
 

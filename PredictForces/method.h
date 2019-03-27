@@ -22,3 +22,7 @@ double calc_norm(Eigen::VectorXd vector);
 double calc_average_force(Eigen::VectorXd force);
 
 Eigen::MatrixXd gen_distmat(Eigen::VectorXd coord);
+
+void normal_equation(Eigen::VectorXd & coefficient, Eigen::MatrixXd X, Eigen::VectorXd Y);
+
+void BGD(Eigen::VectorXd & coeff, Eigen::MatrixXd X, Eigen::MatrixXd Y, double learning_rate, double convergence, size_t iterations);
