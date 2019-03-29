@@ -148,21 +148,26 @@ Eigen::MatrixXd gen_distmat(Eigen::VectorXd coord)
 	return distmat;
 }
 
-void normal_equation(Eigen::VectorXd &coefficient, Eigen::MatrixXd X, Eigen::VectorXd Y)
+void normal_equation(Eigen::VectorXd &coeff, Eigen::MatrixXd X, Eigen::VectorXd Y)
 {
-	coefficient = (X.transpose() * X).inverse() * X.transpose() * Y;
+	coeff = (X.transpose() * X).inverse() * X.transpose() * Y;
 }
 
 // Batch Gradient Descent
 void BGD(Eigen::VectorXd &coeff, Eigen::MatrixXd X, Eigen::MatrixXd Y, double learning_rate, double convergence, size_t iterations)
 {
-	int ndim = coeff.size();
-	size_t count = 0;
-	for (size_t i = 0; i < iterations; ++i)
+	size_t nfeature = coeff.size();
+	size_t nsample = Y.size();
+	size_t nconverge = 0;
+	Eigen::VectorXd tmpcoeff = Eigen::VectorXd::Zero(nfeature);
+	for (size_t k = 0; k < iterations; ++k)
 	{
-		Eigen::VectorXd tmpCoeff = learning_rate / ndim * (X * coeff - Y).transpose() * X;
-		coeff -= tmpCoeff;
-		if (tmpCoeff.sum() < convergence * ndim)
+		tmpcoeff = learning_rate / nsample * ((X * coeff - Y).transpose() * X);
+		coeff -= tmpcoeff;
+		for (size_t j = 0; j < nfeature; ++j)
+			if (abs(tmpcoeff(j)) < convergence)
+				++nconverge;
+		if (nconverge == nfeature)
 			break;
 	}
 }
