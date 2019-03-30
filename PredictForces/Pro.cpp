@@ -4,9 +4,9 @@ Pro::Pro()
 {
 }
 
-Pro::Pro(std::string fpath, bool has_ligand)
+Pro::Pro(std::string fpath, bool has_ligand_flag)
 {
-	with_ligand_flag = has_ligand;
+	with_ligand_flag = has_ligand_flag;
 	read(fpath);
 	gen_coord();
 	gen_distmat();
@@ -41,17 +41,17 @@ void Pro::read(std::string fpath)
 			{
 				std::string resname = read_resname(line);
 
-				if (prev_resid == 0 && prev_chain == "")
-				{
-					prev_resid = read_resid(line);
-					prev_chain = read_chain(line);
-				}
-
-				if (prev_resid != read_resid(line) || prev_chain != read_chain(line))
-					++proid;
-
 				if (prores.find(resname) != prores.end())
 				{
+					if (prev_resid == 0 && prev_chain == "")
+					{
+						prev_resid = read_resid(line);
+						prev_chain = read_chain(line);
+					}
+
+					if (prev_resid != read_resid(line) || prev_chain != read_chain(line))
+						++proid;
+
 					if (read_atomname(line) == "CA")
 					{
 						ResInfo res = read_res(line);
@@ -98,7 +98,7 @@ void Pro::read(std::string fpath)
 			}
 		}
 		pdb.close();
-		resn = proid;
+		resn = proid + 1;
 		proatomn = proatomid;
 		ligandatomn = ligandatomid;
 	}
@@ -247,15 +247,15 @@ void Pro::gen_dist2ligand()
 		Eigen::Map<Eigen::Matrix3Xd> ligandxyz(ligandcoord.data(), 3, ligandatomn);
 		for (size_t i = 0; i < resn; ++i)
 		{
-			Eigen::Map<Eigen::Matrix3Xd> resxyz(get_rescoord(i).data(), 3, get_resatomn(i));
-			Eigen::VectorXd dist(resxyz.cols());
-			Eigen::Vector3d onexyz = Eigen::Vector3d::Zero();
+			size_t resatomn = get_resatomn(i);
+			Eigen::VectorXd rescoord = get_rescoord(i);
+			Eigen::Map<Eigen::Matrix3Xd> resxyz(rescoord.data(), 3, resatomn);
+			Eigen::VectorXd dist = Eigen::VectorXd::Zero(resatomn);
 			Eigen::Array3Xd diffxyz(3, ligandxyz.cols());
-			for (size_t i = 0; i < size_t(resxyz.cols()); i++)
+			for (size_t j = 0; j < resatomn; ++j)
 			{
-				onexyz = resxyz.col(i);
-				diffxyz = ligandxyz.colwise() - onexyz;
-				dist(i) = diffxyz.pow(2).colwise().sum().minCoeff();
+				diffxyz = ligandxyz.colwise() - resxyz.col(j);
+				dist(j) = diffxyz.pow(2).colwise().sum().minCoeff();
 			}
 			dist2ligand(i) = dist.minCoeff();
 		}

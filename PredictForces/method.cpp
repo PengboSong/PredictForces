@@ -41,9 +41,9 @@ Eigen::VectorXd fitting(Eigen::VectorXd coord1, Eigen::VectorXd coord2)
 		xyz2.colwise() -= c2;
 
 		Eigen::Matrix3d r_mat = Eigen::Matrix3d::Zero();
-		for (size_t i = 0; i < 3; i++)
-			for (size_t j = 0; j < 3; j++)
-				for (size_t k = 0; k < vlen; k++)
+		for (size_t i = 0; i < 3; ++i)
+			for (size_t j = 0; j < 3; ++j)
+				for (size_t k = 0; k < vlen; ++k)
 					r_mat(i, j) += xyz2(i, k) * xyz1(j, k);
 
 		Eigen::Matrix3d sym_mat = r_mat.transpose() * r_mat;
@@ -53,15 +53,15 @@ Eigen::VectorXd fitting(Eigen::VectorXd coord1, Eigen::VectorXd coord2)
 		Eigen::Matrix3d eigenvectors = eigensolver.eigenvectors();
 
 		Eigen::Matrix3d b_mat = Eigen::Matrix3d::Zero();
-		for (size_t i = 0; i < 3; i++)
+		for (size_t i = 0; i < 3; ++i)
 			b_mat.row(i) = r_mat * eigenvectors.col(i) / sqrt(eigenvalues[i]);
 
 		Eigen::Matrix3d a_mat = eigenvectors.transpose();
 
 		Eigen::Matrix3d u_mat = Eigen::Matrix3d::Zero();
-		for (size_t i = 0; i < 3; i++)
-			for (size_t j = 0; j < 3; j++)
-				for (size_t k = 0; k < 3; k++)
+		for (size_t i = 0; i < 3; ++i)
+			for (size_t j = 0; j < 3; ++j)
+				for (size_t k = 0; k < 3; ++k)
 					u_mat(i, j) += b_mat(k, j) * a_mat(k, i);
 
 		Eigen::Matrix3Xd fit_xyz2 = u_mat * xyz2;
@@ -115,7 +115,7 @@ double calc_mindist(Eigen::VectorXd coord1, Eigen::VectorXd coord2)
 	Eigen::VectorXd dist(xyz1.cols());
 	Eigen::Vector3d onexyz = Eigen::Vector3d::Zero();
 	Eigen::Array3Xd diffxyz(3, xyz2.cols());
-	for (size_t i = 0; i < size_t(xyz1.cols()); i++)
+	for (size_t i = 0; i < size_t(xyz1.cols()); ++i)
 	{
 		onexyz = xyz1.col(i);
 		diffxyz = xyz2.colwise() - onexyz;		
@@ -141,11 +141,28 @@ Eigen::MatrixXd gen_distmat(Eigen::VectorXd coord)
 {
 	size_t resn = coord.size() / 3;
 	Eigen::MatrixXd distmat = Eigen::MatrixXd::Zero(resn, resn);
-	for (size_t i = 0; i < resn; i++)
-		for (size_t j = i + 1; j < resn; j++)
+	for (size_t i = 0; i < resn; ++i)
+		for (size_t j = i + 1; j < resn; ++j)
 			distmat(j, i) = distmat(i, j) = sqrt(pow(coord(3 * i) - coord(3 * j), 2) + pow(coord(3 * i + 1) - coord(3 * j + 1), 2) + pow(coord(3 * i + 2) - coord(3 * j + 2), 2));
 
 	return distmat;
+}
+
+std::list<size_t> gen_pocket(double cutoff, Eigen::VectorXd dist2ligand)
+{
+	std::list<size_t> pocket;
+	if (cutoff > dist2ligand.minCoeff())
+	{
+		for (size_t i = 0; i < size_t(dist2ligand.size()); ++i)
+			if (dist2ligand(i) < cutoff)
+				pocket.push_back(i);
+	}
+	else
+	{
+		std::cout << std::fixed << std::setprecision(2);
+		std::cout << "[Error] Given cutoff is too short. Minimum possible cutoff is " << dist2ligand.minCoeff() << "." << std::endl;
+	}
+	return pocket;
 }
 
 void normal_equation(Eigen::VectorXd &coeff, Eigen::MatrixXd X, Eigen::VectorXd Y)

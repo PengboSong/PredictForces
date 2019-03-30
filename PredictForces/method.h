@@ -1,6 +1,7 @@
 #pragma once
-
 #include <iostream>
+#include <iomanip>
+#include <list>
 
 #include <Eigen/Dense>
 #include <Eigen/QR>
@@ -22,6 +23,8 @@ double calc_norm(Eigen::VectorXd vector);
 double calc_average_force(Eigen::VectorXd force);
 
 Eigen::MatrixXd gen_distmat(Eigen::VectorXd coord);
+
+std::list<size_t> gen_pocket(double cutoff, Eigen::VectorXd dist2ligand);
 
 void normal_equation(Eigen::VectorXd & coefficient, Eigen::MatrixXd X, Eigen::VectorXd Y);
 

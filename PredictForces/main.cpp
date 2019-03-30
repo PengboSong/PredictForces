@@ -1,20 +1,26 @@
+#include <filesystem>
+
 #include "Pro.h"
 #include "ProAnalysis.h"
 
-std::list<double> cutoff_pocket = { 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 9.0, 10.0, 11.0, 12.0 };
+std::list<double> cutoff_pocket = { 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0 };
 
 int main(int argc, char** argv)
 {
 	std::string tmp;
-	std::string metjapo = "C:\\Users\\china\\Documents\\group\\predict_forces\\conformations\\MetJ\\1cmb.pdb";
-	std::string metjc = "C:\\Users\\china\\Documents\\group\\predict_forces\\conformations\\MetJ\\1cma.pdb";
-	std::string metja = "C:\\Users\\china\\Documents\\group\\predict_forces\\conformations\\MetJ\\1cmc.pdb";
+	std::string dataset = "C:\\Users\\Pengbo Song\\Documents\\GitHub\\PredictForces\\dataset\\";
+	std::string metjapo = dataset + "MetJ\\1cmb.pdb";
+	std::string metjc = dataset + "MetJ\\1cma.pdb";
+	std::string metja = dataset + "MetJ\\1cmc.pdb";
 
-	std::string p38apo = "C:\\Users\\china\\Documents\\group\\predict_forces\\conformations\\p38\\1r39.pdb";
-	std::string p38a1 = "C:\\Users\\china\\Documents\\group\\predict_forces\\conformations\\p38\\1kv1.pdb";
-	std::string p38a2 = "C:\\Users\\china\\Documents\\group\\predict_forces\\conformations\\p38\\1kv2.pdb";
+	std::string p38apo = dataset + "p38\\1r39.pdb";
+	std::string p38a1 = dataset + "p38\\1kv1.pdb";
+	std::string p38a2 = dataset + "p38\\1kv2.pdb";
 
-	ProAnalysis Metj(Pro::Pro(metjapo, false), Pro::Pro(), Pro::Pro(metja, true), Pro::Pro(metjc, true));
+	Pro Apo(metjapo, false);
+	Pro Alle(metja, true);
+	Pro Complex(metjc, true);
+	ProAnalysis Metj(Apo, Pro::Pro(), Alle, Complex);
 	
 	for (std::list<double>::iterator it = cutoff_pocket.begin(); it != cutoff_pocket.end(); it++)
 	{
