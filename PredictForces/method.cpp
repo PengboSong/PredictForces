@@ -173,13 +173,14 @@ void normal_equation(Eigen::VectorXd &coeff, Eigen::MatrixXd X, Eigen::VectorXd 
 // Batch Gradient Descent
 void BGD(Eigen::VectorXd &coeff, Eigen::MatrixXd X, Eigen::MatrixXd Y, double learning_rate, double convergence, size_t iterations)
 {
+	double MAX_RANDOM_TIMES = 1000;
 	size_t nfeature = coeff.size();
 	size_t nsample = Y.size();
 	double cost = 0.0;
 	bool converge_flag = false;
 	bool inf_flag = false;
 	Eigen::ArrayXd tmpcoeff = Eigen::ArrayXd::Zero(nsample);
-	while (true)
+	for (size_t l = 0; l < MAX_RANDOM_TIMES; ++l)
 	{
 		for (size_t k = 0; k < iterations; ++k)
 		{
@@ -189,6 +190,7 @@ void BGD(Eigen::VectorXd &coeff, Eigen::MatrixXd X, Eigen::MatrixXd Y, double le
 			if (std::isinf(cost))
 			{
 				inf_flag = true;
+				std::cout << "Iteration times: " << k << std::endl;
 				break;
 			}
 
