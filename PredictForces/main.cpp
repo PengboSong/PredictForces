@@ -26,10 +26,13 @@ int main(int argc, char** argv)
 	std::cout << "Using cutoff " << 4.0 << std::endl;
 	Metj.set_learning_step(1e-4);
 	Metj.set_convergence(0.1);
+	Metj.set_iteration_times(10000);
 	Metj.gen_pocketA(2.0);
 	Metj.test_pocketA();
+
 	Metj.set_learning_step(1e-4);
 	Metj.set_convergence(0.1);
+	Metj.set_iteration_times(10000);
 	Metj.gen_pocketAS(2.6);
 	Metj.test_pocketAS();
 

@@ -28,6 +28,11 @@ public:
 		if (limit > 0)
 			CONVERGENCE = limit;
 	}
+	void set_iteration_times(long N)
+	{
+		if (N > 0)
+			ITERATION_TIMES = size_t(N);
+	}
 
 	std::list<size_t> get_pocketS() {
 		return pocketS;
@@ -213,6 +218,6 @@ private:
 	// BGD parameters
 	double LEARNING_STEP = 1e-6;
 	double CONVERGENCE = 1e-2;
-
+	size_t ITERATION_TIMES = 10000;
 };
 

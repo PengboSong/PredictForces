@@ -287,7 +287,7 @@ void ProAnalysis::gen_pocket_force(Eigen::VectorXd &pocket_force, std::list<size
 	std::cout << "Using learning step " << LEARNING_STEP << "." << std::endl;
 	std::cout << "Using convergence " << CONVERGENCE << "." << std::endl;
 	std::cout << std::setiosflags(std::ios::fixed);
-	BGD(coeff, X, Y, LEARNING_STEP, CONVERGENCE, 10000);
+	BGD(coeff, X, Y, LEARNING_STEP, CONVERGENCE, ITERATION_TIMES);
 	std::cout << coeff << std::endl << std::endl;
 
 	i = 0;
