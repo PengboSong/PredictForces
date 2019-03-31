@@ -18,6 +18,17 @@ public:
 	ProAnalysis(Pro apo, Pro binding, Pro allostery, Pro complex);
 	~ProAnalysis();
 
+	void set_learning_step(double step)
+	{
+		if (step > 0)
+			LEARNING_STEP = step;
+	}
+	void set_convergence(double limit)
+	{
+		if (limit > 0)
+			CONVERGENCE = limit;
+	}
+
 	std::list<size_t> get_pocketS() {
 		return pocketS;
 	}
@@ -198,5 +209,10 @@ private:
 	std::list<size_t> pocketS;
 	std::list<size_t> pocketA;
 	std::list<size_t> pocketAS;
+
+	// BGD parameters
+	double LEARNING_STEP = 1e-6;
+	double CONVERGENCE = 1e-2;
+
 };
 

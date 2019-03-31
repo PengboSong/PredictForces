@@ -255,7 +255,7 @@ void Pro::gen_dist2ligand()
 			for (size_t j = 0; j < resatomn; ++j)
 			{
 				diffxyz = ligandxyz.colwise() - resxyz.col(j);
-				dist(j) = diffxyz.pow(2).colwise().sum().minCoeff();
+				dist(j) = sqrt(diffxyz.pow(2).colwise().sum().minCoeff());
 			}
 			dist2ligand(i) = dist.minCoeff();
 		}

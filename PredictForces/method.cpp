@@ -175,16 +175,39 @@ void BGD(Eigen::VectorXd &coeff, Eigen::MatrixXd X, Eigen::MatrixXd Y, double le
 {
 	size_t nfeature = coeff.size();
 	size_t nsample = Y.size();
-	size_t nconverge = 0;
-	Eigen::VectorXd tmpcoeff = Eigen::VectorXd::Zero(nfeature);
-	for (size_t k = 0; k < iterations; ++k)
+	double cost = 0.0;
+	bool converge_flag = false;
+	bool inf_flag = false;
+	Eigen::ArrayXd tmpcoeff = Eigen::ArrayXd::Zero(nsample);
+	while (true)
 	{
-		tmpcoeff = learning_rate / nsample * ((X * coeff - Y).transpose() * X);
-		coeff -= tmpcoeff;
-		for (size_t j = 0; j < nfeature; ++j)
-			if (abs(tmpcoeff(j)) < convergence)
-				++nconverge;
-		if (nconverge == nfeature)
+		for (size_t k = 0; k < iterations; ++k)
+		{
+			coeff -= learning_rate / nsample * ((X * coeff - Y).transpose() * X);
+			cost = (X * coeff - Y).dot(X * coeff - Y) / 2 / nsample;
+
+			if (std::isinf(cost))
+			{
+				inf_flag = true;
+				break;
+			}
+
+			if (cost < convergence)
+			{
+				converge_flag = true;
+				break;
+			}
+		}
+		if (inf_flag)
+		{
+			coeff = Eigen::VectorXd::Random(nfeature);
+			std::cout << "Using another initialization set: " << std::endl;
+			std::cout << coeff << std::endl;
+		}
+		else
 			break;
 	}
+	if (!converge_flag)
+		std::cout << "Do not converge in " << iterations << " steps." << std::endl;
+
 }

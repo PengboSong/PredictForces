@@ -2,6 +2,7 @@
 #include <iostream>
 #include <iomanip>
 #include <list>
+#include <cmath>
 
 #include <Eigen/Dense>
 #include <Eigen/QR>
