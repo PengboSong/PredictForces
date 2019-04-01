@@ -18,6 +18,13 @@ public:
 	ProAnalysis(Pro apo, Pro binding, Pro allostery, Pro complex);
 	~ProAnalysis();
 
+	Eigen::MatrixXd get_hessian_matrix() {
+		return H;
+	}
+	Eigen::MatrixXd get_convariance_matrix() {
+		return G;
+	}
+
 	void set_learning_step(double step)
 	{
 		if (step > 0)

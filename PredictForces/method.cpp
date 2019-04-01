@@ -177,9 +177,9 @@ void BGD(Eigen::VectorXd &coeff, Eigen::MatrixXd X, Eigen::MatrixXd Y, double le
 	size_t nfeature = coeff.size();
 	size_t nsample = Y.size();
 	double cost = 0.0;
+	double prev_cost = 0.0;
 	bool converge_flag = false;
 	bool inf_flag = false;
-	Eigen::ArrayXd tmpcoeff = Eigen::ArrayXd::Zero(nsample);
 	for (size_t l = 0; l < MAX_RANDOM_TIMES; ++l)
 	{
 		for (size_t k = 0; k < iterations; ++k)
@@ -194,11 +194,12 @@ void BGD(Eigen::VectorXd &coeff, Eigen::MatrixXd X, Eigen::MatrixXd Y, double le
 				break;
 			}
 
-			if (cost < convergence)
+			if (k > 0 && abs(cost - prev_cost) < convergence)
 			{
 				converge_flag = true;
 				break;
 			}
+			prev_cost = cost;
 		}
 		if (inf_flag)
 		{
