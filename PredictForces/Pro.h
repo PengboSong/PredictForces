@@ -47,6 +47,9 @@ public:
 	Eigen::Matrix3d get_hessian(size_t i, size_t j);
 	double get_hessian_s(size_t si, size_t sj);
 
+	void write_hessian(std::string writepath);
+	void write_covariance(std::string writepath);
+
 	bool empty();
 
 private:
@@ -68,6 +71,8 @@ private:
 
 	void gen_hessian();
 
+	void gen_covariance();
+
 	void gen_distmat();
 
 	void gen_dist2ligand();
@@ -82,6 +87,7 @@ private:
 	Eigen::ArrayXXd kmat;
 	Eigen::MatrixXd distmat;
 	Eigen::MatrixXd hessian;
+	Eigen::MatrixXd covariance;
 	Eigen::VectorXd procoord;
 	std::map<size_t, Eigen::VectorXd> rescoords;
 	Eigen::VectorXd ligandcoord;
@@ -90,6 +96,8 @@ private:
 	std::set<std::string> prores = { "ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE", "LEU", "LYS", "MET", "PHE", "PRO", "SER", "THR", "TRP", "TYR", "VAL" };
 	std::set<std::string> ligandres = {};
 	std::set<std::string> exclres = { "HOH" };
+
+	Eigen::IOFormat CleanFmt = Eigen::IOFormat(4, 0, ", ", "\n", "[", "]");
 
 	size_t resn = 0;
 	size_t proatomn = 0;
@@ -103,6 +111,8 @@ private:
 
 	bool gen_distmat_flag = false;
 	bool gen_contact_flag = false;
+	bool gen_hessian_flag = false;
+	bool gen_covariance_flag = false;
 
 	bool with_ligand_flag = false;
 };

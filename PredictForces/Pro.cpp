@@ -13,6 +13,7 @@ Pro::Pro(std::string fpath, bool has_ligand_flag)
 	gen_contact();
 	pairn = contact_pairs.size();
 	gen_hessian();
+	gen_covariance();
 	gen_dist2ligand();
 }
 
@@ -186,46 +187,68 @@ void Pro::gen_coord()
 void Pro::gen_hessian()
 {
 	hessian = Eigen::MatrixXd::Zero(3 * resn, 3 * resn);
-	for (std::vector<pair>::iterator it = contact_pairs.begin(); it != contact_pairs.end(); it++)
+
+	if (gen_contact_flag)
 	{
-		double d = distance(*it);
-		double k = k_default;
-		if (get_contact(it->i, it->j) == 2)
-			k = k_intra;
-		else if (get_contact(it->i, it->j) == 3)
-			k = k_inter;
+		for (std::vector<pair>::iterator it = contact_pairs.begin(); it != contact_pairs.end(); it++)
+		{
+			double d = distance(*it);
+			double k = k_default;
+			if (get_contact(it->i, it->j) == 2)
+				k = k_intra;
+			else if (get_contact(it->i, it->j) == 3)
+				k = k_inter;
 
-		double hxx = -k * pow(diff_x(*it) / d, 2);
-		double hyy = -k * pow(diff_y(*it) / d, 2);
-		double hzz = -k * pow(diff_z(*it) / d, 2);
-		double hxy = -k * diff_x(*it) * diff_y(*it) / pow(d, 2);
-		double hxz = -k * diff_x(*it) * diff_z(*it) / pow(d, 2);
-		double hyz = -k * diff_y(*it) * diff_z(*it) / pow(d, 2);
+			double hxx = -k * pow(diff_x(*it) / d, 2);
+			double hyy = -k * pow(diff_y(*it) / d, 2);
+			double hzz = -k * pow(diff_z(*it) / d, 2);
+			double hxy = -k * diff_x(*it) * diff_y(*it) / pow(d, 2);
+			double hxz = -k * diff_x(*it) * diff_z(*it) / pow(d, 2);
+			double hyz = -k * diff_y(*it) * diff_z(*it) / pow(d, 2);
 
-		hessian(3 * it->i, 3 * it->j) = hxx;
-		hessian(3 * it->i, 3 * it->i) -= hxx;
+			hessian(3 * it->i, 3 * it->j) = hxx;
+			hessian(3 * it->i, 3 * it->i) -= hxx;
 
-		hessian(3 * it->i + 1, 3 * it->j + 1) = hyy;
-		hessian(3 * it->i + 1, 3 * it->i + 1) -= hyy;
+			hessian(3 * it->i + 1, 3 * it->j + 1) = hyy;
+			hessian(3 * it->i + 1, 3 * it->i + 1) -= hyy;
 
-		hessian(3 * it->i + 2, 3 * it->j + 2) = hzz;
-		hessian(3 * it->i + 2, 3 * it->i + 2) -= hzz;
+			hessian(3 * it->i + 2, 3 * it->j + 2) = hzz;
+			hessian(3 * it->i + 2, 3 * it->i + 2) -= hzz;
 
-		hessian(3 * it->i, 3 * it->j + 1) = hxy;
-		hessian(3 * it->i, 3 * it->i + 1) -= hxy;
-		hessian(3 * it->i + 1, 3 * it->j) = hxy;
-		hessian(3 * it->i + 1, 3 * it->i) -= hxy;
+			hessian(3 * it->i, 3 * it->j + 1) = hxy;
+			hessian(3 * it->i, 3 * it->i + 1) -= hxy;
+			hessian(3 * it->i + 1, 3 * it->j) = hxy;
+			hessian(3 * it->i + 1, 3 * it->i) -= hxy;
 
-		hessian(3 * it->i, 3 * it->j + 2) = hxz;
-		hessian(3 * it->i, 3 * it->i + 2) -= hxz;
-		hessian(3 * it->i + 2, 3 * it->j) = hxz;
-		hessian(3 * it->i + 2, 3 * it->i) -= hxz;
+			hessian(3 * it->i, 3 * it->j + 2) = hxz;
+			hessian(3 * it->i, 3 * it->i + 2) -= hxz;
+			hessian(3 * it->i + 2, 3 * it->j) = hxz;
+			hessian(3 * it->i + 2, 3 * it->i) -= hxz;
 
-		hessian(3 * it->i + 1, 3 * it->j + 2) = hyz;
-		hessian(3 * it->i + 1, 3 * it->i + 2) -= hyz;
-		hessian(3 * it->i + 2, 3 * it->j + 1) = hyz;
-		hessian(3 * it->i + 2, 3 * it->i + 1) -= hyz;
+			hessian(3 * it->i + 1, 3 * it->j + 2) = hyz;
+			hessian(3 * it->i + 1, 3 * it->i + 2) -= hyz;
+			hessian(3 * it->i + 2, 3 * it->j + 1) = hyz;
+			hessian(3 * it->i + 2, 3 * it->i + 1) -= hyz;
+		}
+		gen_hessian_flag = true;
 	}
+}
+
+void Pro::gen_covariance()
+{
+	covariance = Eigen::MatrixXd::Zero(3 * resn, 3 * resn);
+
+	if (gen_hessian_flag)
+	{
+		Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigensolver(hessian);
+		Eigen::VectorXd eigenvalues = eigensolver.eigenvalues();
+		Eigen::MatrixXd eigenvectors = eigensolver.eigenvectors();
+
+		// TODO
+
+		gen_covariance_flag = true;
+	}
+
 }
 
 void Pro::gen_distmat()
@@ -427,7 +450,7 @@ Eigen::MatrixXd Pro::get_hessian()
 
 Eigen::Matrix3d Pro::get_hessian(size_t i, size_t j)
 {
-	if (i < resn && j < resn)
+	if (gen_hessian_flag && i < resn && j < resn)
 		return Eigen::Matrix3d(hessian.block(3 * i, 3 * j, 3, 3));
 	else
 		return Eigen::Matrix3d();
@@ -435,10 +458,33 @@ Eigen::Matrix3d Pro::get_hessian(size_t i, size_t j)
 
 double Pro::get_hessian_s(size_t si, size_t sj)
 {
-	if (si < 3 * resn && sj < 3 * resn)
+	if (gen_hessian_flag && si < 3 * resn && sj < 3 * resn)
 		return hessian(si, sj);
 	else
 		return 0.0;
+}
+
+void Pro::write_hessian(std::string writepath)
+{
+	if (gen_hessian_flag)
+	{
+		std::ofstream hessianf(writepath);
+		if (hessianf.is_open())
+		{
+			hessianf << hessian.format(CleanFmt);
+			hessianf.close();
+		}
+	}
+}
+
+void Pro::write_covariance(std::string writepath)
+{
+	std::ofstream covariancef(writepath);
+	if (covariancef.is_open())
+	{
+		covariancef << covariance.format(CleanFmt);
+		covariancef.close();
+	}
 }
 
 bool Pro::empty()
