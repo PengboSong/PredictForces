@@ -4,9 +4,13 @@ Pro::Pro()
 {
 }
 
-Pro::Pro(std::string fpath, bool has_ligand_flag)
+Pro::Pro(std::string fpath, bool has_ligand_flag, std::set<std::string> exclude = { }, double k = 10.0, double cutoff = 1.0)
 {
 	with_ligand_flag = has_ligand_flag;
+	for (std::set<std::string>::iterator it = exclude.begin(); it != exclude.end(); ++it)
+		exclres.emplace(*it);
+	k_default = k_inter = k_intra = k;
+	cutoff_inter = cutoff_intra = cutoff;
 	read(fpath);
 	gen_coord();
 	gen_distmat();

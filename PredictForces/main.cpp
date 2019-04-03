@@ -26,13 +26,14 @@ int main(int argc, char** argv)
 	Metj.set_learning_step(1e-6);
 	Metj.set_convergence(1e-6);
 	Metj.set_iteration_times(1000000);
-	Metj.gen_pocketA(3.5);
+	Metj.gen_pocketA(4.0);
+	Metj.show_pocketA();
 	Metj.test_pocketA();
 
 	Metj.set_learning_step(1e-6);
 	Metj.set_convergence(1e-6);
 	Metj.set_iteration_times(1000000);
-	Metj.gen_pocketAS(3.5);
+	Metj.gen_pocketAS(4.0);
 	Metj.test_pocketAS();
 	
 	std::cin >> tmp;
