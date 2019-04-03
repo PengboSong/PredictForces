@@ -1,11 +1,6 @@
 #pragma once
 #include <string>
 
-struct pair
-{
-	size_t i;
-	size_t j;
-};
 struct ResInfo
 {
 	std::string resname;

@@ -5,6 +5,7 @@
 #include <vector>
 #include <map>
 #include <set>
+#include <utility>
 
 #include <Eigen/Dense>
 
@@ -14,7 +15,7 @@ class Pro
 {
 public:
 	Pro();
-	Pro(std::string fpath, bool has_ligand_flag, std::set<std::string> exclude = { }, double k = 10.0, double cutoff = 1.0);
+	Pro(std::string fpath, bool has_ligand_flag, std::set<std::string> exclude = { }, double k = 1.0, double cutoff = 10.0);
 	~Pro();
 
 	bool has_ligand();
@@ -35,6 +36,9 @@ public:
 
 	int get_contact(size_t i, size_t j);
 
+	void show_contact_pairs();
+	Eigen::MatrixXi get_contact_map();
+
 	Eigen::VectorXd get_procoord();
 	Eigen::VectorXd get_ligandcoord();
 
@@ -54,14 +58,8 @@ public:
 
 private:
 	double distance(size_t i, size_t j);
-	double diff_x(size_t i, size_t j);
-	double diff_y(size_t i, size_t j);
-	double diff_z(size_t i, size_t j);
 
-	double distance(pair ij);
-	double diff_x(pair ij);
-	double diff_y(pair ij);
-	double diff_z(pair ij);
+	size_t calc_zero_modes(Eigen::VectorXd eigenvalues, std::vector<size_t> *zeromodes, std::vector<size_t> *nonzeromodes);
 
 	void read(std::string fpath);
 
@@ -83,7 +81,7 @@ private:
 	std::map<std::string, std::vector<AtomInfo>> excl;
 
 	Eigen::MatrixXi contact_map;
-	std::vector<pair> contact_pairs;
+	std::vector<std::pair<size_t, size_t>> contact_pairs;
 	Eigen::ArrayXXd kmat;
 	Eigen::MatrixXd distmat;
 	Eigen::MatrixXd hessian;

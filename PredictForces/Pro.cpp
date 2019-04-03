@@ -4,7 +4,7 @@ Pro::Pro()
 {
 }
 
-Pro::Pro(std::string fpath, bool has_ligand_flag, std::set<std::string> exclude = { }, double k = 10.0, double cutoff = 1.0)
+Pro::Pro(std::string fpath, bool has_ligand_flag, std::set<std::string> exclude, double k, double cutoff)
 {
 	with_ligand_flag = has_ligand_flag;
 	for (std::set<std::string>::iterator it = exclude.begin(); it != exclude.end(); ++it)
@@ -118,32 +118,31 @@ void Pro::gen_contact()
 	contact_map = Eigen::MatrixXi::Zero(resn, resn);
 	kmat = Eigen::ArrayXXd::Zero(resn, resn);
 
-	for (size_t i = 0; i < resn; i++)
+	for (size_t i = 0; i < resn; ++i)
 	{
 		contact_map(i, i) = 1;
-		for (size_t j = i + 1; j < resn; j++)
+		for (size_t j = i + 1; j < resn; ++j)
 		{
-			double dist_ij = 0.0;
-			if (gen_distmat_flag)
-				dist_ij = distmat(i, j);
-			else
-				dist_ij = distance(i, j);
+			double dist_ij = gen_distmat_flag ? distmat(i, j) : distance(i, j);
 
-			pair one{ i, j };
-			if (pro[i].chain == pro[j].chain && distmat(i, j) < cutoff_intra)
+			if (pro[i].chain == pro[j].chain && dist_ij < cutoff_intra)
 			{
 				contact_map(i, j) = contact_map(j, i) = 2;
-				contact_pairs.push_back(one);
+				contact_pairs.push_back(std::make_pair(i, j));
+				contact_pairs.push_back(std::make_pair(j, i));
 				kmat(i, j) = kmat(j, i) = k_intra;
 			}
-			else if (pro[i].chain != pro[j].chain && distmat(i, j) < cutoff_inter)
+			else if (pro[i].chain != pro[j].chain && dist_ij < cutoff_inter)
 			{
 				contact_map(i, j) = contact_map(j, i) = 3;
-				contact_pairs.push_back(one);
+				contact_pairs.push_back(std::make_pair(i, j));
+				contact_pairs.push_back(std::make_pair(j, i));
 				kmat(i, j) = kmat(j, i) = k_inter;
 			}
 			else
+			{
 				contact_map(i, j) = contact_map(j, i) = 0;
+			}
 		}
 	}
 
@@ -194,46 +193,53 @@ void Pro::gen_hessian()
 
 	if (gen_contact_flag)
 	{
-		for (std::vector<pair>::iterator it = contact_pairs.begin(); it != contact_pairs.end(); it++)
+		for (std::vector<std::pair<size_t, size_t>>::iterator it = contact_pairs.begin(); it != contact_pairs.end(); ++it)
 		{
-			double d = distance(*it);
+			size_t pi = it->first;
+			size_t pj = it->second;
+			double diffx = pro[pi].x - pro[pj].x;
+			double diffy = pro[pi].y - pro[pj].y;
+			double diffz = pro[pi].z - pro[pj].z;
+			double d = pow(diffx, 2) + pow(diffy, 2) + pow(diffz, 2);
 			double k = k_default;
-			if (get_contact(it->i, it->j) == 2)
+			if (get_contact(pi, pj) == 2)
 				k = k_intra;
-			else if (get_contact(it->i, it->j) == 3)
+			else if (get_contact(pi, pj) == 3)
 				k = k_inter;
+			k /= d;
 
-			double hxx = -k * pow(diff_x(*it) / d, 2);
-			double hyy = -k * pow(diff_y(*it) / d, 2);
-			double hzz = -k * pow(diff_z(*it) / d, 2);
-			double hxy = -k * diff_x(*it) * diff_y(*it) / pow(d, 2);
-			double hxz = -k * diff_x(*it) * diff_z(*it) / pow(d, 2);
-			double hyz = -k * diff_y(*it) * diff_z(*it) / pow(d, 2);
+			double hxx = -k * pow(diffx, 2);
+			double hyy = -k * pow(diffy, 2);
+			double hzz = -k * pow(diffz, 2);
+			double hxy = -k * diffx * diffy;
+			double hxz = -k * diffx * diffz;
+			double hyz = -k * diffy * diffz;
 
-			hessian(3 * it->i, 3 * it->j) = hxx;
-			hessian(3 * it->i, 3 * it->i) -= hxx;
+			hessian(3 * pi, 3 * pj) = hxx;
+			hessian(3 * pi, 3 * pi) -= hxx;
 
-			hessian(3 * it->i + 1, 3 * it->j + 1) = hyy;
-			hessian(3 * it->i + 1, 3 * it->i + 1) -= hyy;
+			hessian(3 * pi + 1, 3 * pj + 1) = hyy;
+			hessian(3 * pi + 1, 3 * pi + 1) -= hyy;
 
-			hessian(3 * it->i + 2, 3 * it->j + 2) = hzz;
-			hessian(3 * it->i + 2, 3 * it->i + 2) -= hzz;
+			hessian(3 * pi + 2, 3 * pj + 2) = hzz;
+			hessian(3 * pi + 2, 3 * pi + 2) -= hzz;
 
-			hessian(3 * it->i, 3 * it->j + 1) = hxy;
-			hessian(3 * it->i, 3 * it->i + 1) -= hxy;
-			hessian(3 * it->i + 1, 3 * it->j) = hxy;
-			hessian(3 * it->i + 1, 3 * it->i) -= hxy;
+			hessian(3 * pi, 3 * pj + 1) = hxy;
+			hessian(3 * pi + 1, 3 * pj) = hxy;
+			hessian(3 * pi, 3 * pi + 1) -= hxy;
+			hessian(3 * pi + 1, 3 * pi) -= hxy;
 
-			hessian(3 * it->i, 3 * it->j + 2) = hxz;
-			hessian(3 * it->i, 3 * it->i + 2) -= hxz;
-			hessian(3 * it->i + 2, 3 * it->j) = hxz;
-			hessian(3 * it->i + 2, 3 * it->i) -= hxz;
+			hessian(3 * pi, 3 * pj + 2) = hxz;
+			hessian(3 * pi + 2, 3 * pj) = hxz;
+			hessian(3 * pi, 3 * pi + 2) -= hxz;
+			hessian(3 * pi + 2, 3 * pi) -= hxz;
 
-			hessian(3 * it->i + 1, 3 * it->j + 2) = hyz;
-			hessian(3 * it->i + 1, 3 * it->i + 2) -= hyz;
-			hessian(3 * it->i + 2, 3 * it->j + 1) = hyz;
-			hessian(3 * it->i + 2, 3 * it->i + 1) -= hyz;
+			hessian(3 * pi + 1, 3 * pj + 2) = hyz;
+			hessian(3 * pi + 2, 3 * pj + 1) = hyz;
+			hessian(3 * pi + 1, 3 * pi + 2) -= hyz;
+			hessian(3 * pi + 2, 3 * pi + 1) -= hyz;
 		}
+
 		gen_hessian_flag = true;
 	}
 }
@@ -247,10 +253,19 @@ void Pro::gen_covariance()
 		Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigensolver(hessian);
 		Eigen::VectorXd eigenvalues = eigensolver.eigenvalues();
 		Eigen::MatrixXd eigenvectors = eigensolver.eigenvectors();
+		std::vector<size_t> zeromodes, nonzeromodes;
+		size_t zeromoden = calc_zero_modes(eigenvalues, &zeromodes, &nonzeromodes);
 
-		// TODO
-
-		gen_covariance_flag = true;
+		if (zeromoden == 6)
+		{
+			for (size_t i = 0; i < 3 * resn; ++i)
+				for (size_t j = 0; j < 3 * resn; ++j)
+					for (std::vector<size_t>::iterator k = nonzeromodes.begin(); k != nonzeromodes.end(); ++k)
+						covariance(i, j) += eigenvectors(*k, i) * eigenvectors(*k, j) / eigenvalues(*k);
+			gen_covariance_flag = true;
+		}
+		else
+			std::cout << "[Error] Hessian matrix has " << zeromoden << " zero modes. Please check it before constructing covariance matrix." << std::endl;
 	}
 
 }
@@ -294,39 +309,22 @@ double Pro::distance(size_t i, size_t j)
 	return sqrt(pow(pro[i].x - pro[j].x, 2) + pow(pro[i].y - pro[j].y, 2) + pow(pro[i].z - pro[j].z, 2));
 }
 
-double Pro::diff_x(size_t i, size_t j)
+size_t Pro::calc_zero_modes(Eigen::VectorXd eigenvalues, std::vector<size_t> *zeromodes, std::vector<size_t> *nonzeromodes)
 {
-	return pro[i].x - pro[j].x;
-}
-
-double Pro::diff_y(size_t i, size_t j)
-{
-	return pro[i].y - pro[j].y;
-}
-
-double Pro::diff_z(size_t i, size_t j)
-{
-	return pro[i].z - pro[j].z;
-}
-
-double Pro::distance(pair ij)
-{
-	return distance(ij.i, ij.j);
-}
-
-double Pro::diff_x(pair ij)
-{
-	return diff_x(ij.i, ij.j);
-}
-
-double Pro::diff_y(pair ij)
-{
-	return diff_y(ij.i, ij.j);
-}
-
-double Pro::diff_z(pair ij)
-{
-	return diff_z(ij.i, ij.j);
+	size_t count = 0;
+	for (size_t i = 0; i < size_t(eigenvalues.size()); i++)
+	{
+		if (eigenvalues(i) == 0.0)
+		{
+			++count;
+			zeromodes->push_back(i);
+		}
+		else
+		{
+			nonzeromodes->push_back(i);
+		}
+	}
+	return count;
 }
 
 bool Pro::has_res(size_t id)
@@ -406,6 +404,19 @@ int Pro::get_contact(size_t i, size_t j)
 		return 0;
 }
 
+void Pro::show_contact_pairs()
+{
+	for (std::vector<std::pair<size_t, size_t>>::iterator it = contact_pairs.begin(); it != contact_pairs.end(); ++it)
+	{
+		std::cout << '(' << it->first << ',' << it->second << ')' << std::endl;
+	}
+}
+
+Eigen::MatrixXi Pro::get_contact_map()
+{
+	return contact_map;
+}
+
 Eigen::VectorXd Pro::get_procoord()
 {
 	return procoord;
@@ -477,6 +488,7 @@ void Pro::write_hessian(std::string writepath)
 		{
 			hessianf << hessian.format(CleanFmt);
 			hessianf.close();
+			std::cout << "Hessian matrix has been written to " << writepath << ". " << std::endl;
 		}
 	}
 }
@@ -488,6 +500,7 @@ void Pro::write_covariance(std::string writepath)
 	{
 		covariancef << covariance.format(CleanFmt);
 		covariancef.close();
+		std::cout << "Covariance matrix has been written to " << writepath << ". " << std::endl;
 	}
 }
 
