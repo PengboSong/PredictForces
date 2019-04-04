@@ -212,5 +212,4 @@ void BGD(Eigen::VectorXd &coeff, Eigen::MatrixXd X, Eigen::MatrixXd Y, double le
 	}
 	if (!converge_flag)
 		std::cout << "Do not converge in " << iterations << " steps." << std::endl;
-
 }

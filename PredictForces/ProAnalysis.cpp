@@ -157,10 +157,10 @@ void ProAnalysis::gen_free_energy()
 {
 	if (ES_info && EA_info)
 	{
-		gen_pocket_force(pocketS_force, pocketS, ES_force, ES_displacement);
+		gen_pocket_force(has_pocketS_force_flag, pocketS_force, pocketS, ES_force, ES_displacement);
 		calc_energy_known(S_proenergy, S_pocketenergy, S_energy, pocketS_force, ProS.get_distmat());
 
-		gen_pocket_force(pocketA_force, pocketA, EA_force, EA_displacement);
+		gen_pocket_force(has_pocketA_force_flag, pocketA_force, pocketA, EA_force, EA_displacement);
 		calc_energy_known(A_proenergy, A_pocketenergy, A_energy, pocketA_force, ProA.get_distmat());
 
 		pocketAS_force = pocketS_force + pocketA_force; // Right?
@@ -171,10 +171,10 @@ void ProAnalysis::gen_free_energy()
 	}
 	else if (EAS_info && ES_info)
 	{
-		gen_pocket_force(pocketS_force, pocketS, ES_force, ES_displacement);
+		gen_pocket_force(has_pocketS_force_flag, pocketS_force, pocketS, ES_force, ES_displacement);
 		calc_energy_known(S_proenergy, S_pocketenergy, S_energy, pocketS_force, ProS.get_distmat());
 
-		gen_pocket_force(pocketAS_force, pocketAS, EAS_force, EAS_displacement);
+		gen_pocket_force(has_pocketAS_force_flag, pocketAS_force, pocketAS, EAS_force, EAS_displacement);
 		calc_energy_known(AS_proenergy, AS_pocketenergy, AS_energy, pocketAS_force, ProAS.get_distmat());
 
 		pocketA_force = Eigen::VectorXd::Zero(pocketAS_force.size());
@@ -196,10 +196,10 @@ void ProAnalysis::gen_free_energy()
 	}
 	else if (EAS_info && EA_info)
 	{
-		gen_pocket_force(pocketA_force, pocketA, EA_force, EA_displacement);
+		gen_pocket_force(has_pocketA_force_flag, pocketA_force, pocketA, EA_force, EA_displacement);
 		calc_energy_known(A_proenergy, A_pocketenergy, A_energy, pocketA_force, ProA.get_distmat());
 
-		gen_pocket_force(pocketAS_force, pocketAS, EAS_force, EAS_displacement);
+		gen_pocket_force(has_pocketAS_force_flag, pocketAS_force, pocketAS, EAS_force, EAS_displacement);
 		calc_energy_known(AS_proenergy, AS_pocketenergy, AS_energy, pocketAS_force, ProAS.get_distmat());
 
 		pocketS_force = Eigen::VectorXd::Zero(pocketAS_force.size());
@@ -220,16 +220,22 @@ void ProAnalysis::gen_free_energy()
 		print_energy_results();
 	}
 	else
-		std::cout << "[Error] Lack necessary information." << std::endl;
+		std::cout << "[Error] Lack necessary protein information." << std::endl;
 }
 
-double ProAnalysis::calc_model_rmsd(std::list<size_t> pocket, Eigen::VectorXd pocket_force, Eigen::VectorXd pro_force, Eigen::VectorXd refcoord, Eigen::VectorXd displacenment)
+double ProAnalysis::calc_model_rmsd(bool flag, Eigen::VectorXd pocket_force, Eigen::VectorXd refcoord)
 {
-	gen_pocket_force(pocket_force, pocket, pro_force, displacenment);
-
-	Eigen::VectorXd mprocoord = covariance * pocket_force + ProE.get_procoord();
-	Eigen::VectorXd fitmprocoord = fitting(refcoord, mprocoord);
-	return calc_rmsd(refcoord, fitmprocoord);
+	if (flag)
+	{
+		Eigen::VectorXd mprocoord = covariance * pocket_force + ProE.get_procoord();
+		Eigen::VectorXd fitmprocoord = fitting(refcoord, mprocoord);
+		return calc_rmsd(refcoord, fitmprocoord);
+	}
+	else
+	{
+		std::cout << "[Error] Can not calculate model RMSD without pocket force generated. Call \"gen_pocket*_force\" function first." << std::endl;
+		return 0.0;
+	}
 }
 
 void ProAnalysis::show_pocket(std::list<size_t> pocket)
@@ -242,7 +248,7 @@ void ProAnalysis::show_pocket(std::list<size_t> pocket)
 	std::cout << std::endl;
 }
 
-void ProAnalysis::test_pocket(bool info, std::list<size_t> pocket, Eigen::VectorXd pocket_force, Eigen::VectorXd pro_force, Eigen::VectorXd refcoord, Eigen::VectorXd displacenment)
+void ProAnalysis::test_pocket(bool flag, bool info, std::list<size_t> pocket, Eigen::VectorXd pocket_force, Eigen::VectorXd refcoord)
 {
 	if (!pocket.empty())
 	{
@@ -251,8 +257,10 @@ void ProAnalysis::test_pocket(bool info, std::list<size_t> pocket, Eigen::Vector
 		if (info)
 		{
 			std::cout << std::fixed << std::setprecision(4);
-			std::cout << "[Info] RMSD between real structure and structure calculated according to current pocket: " << calc_model_rmsd(pocket, pocket_force, pro_force, refcoord, displacenment) << " A." << std::endl;
+			std::cout << "[Info] RMSD between real structure and structure calculated according to current pocket: " << calc_model_rmsd(flag, pocket_force, refcoord) << " A." << std::endl;
 		}
+		else
+			std::cout << "[Error] Lack necessary protein information." << std::endl;
 	}
 	else
 		std::cout << "[Error] The binding pocket domain is not specificed." << std::endl;
@@ -329,13 +337,13 @@ void ProAnalysis::gen_pocket(bool has_ligand, std::list<size_t> &pocket, double 
 		std::cout << "[Error] Can not find ligand information." << std::endl;
 }
 
-void ProAnalysis::gen_pocket_force(Eigen::VectorXd &pocket_force, std::list<size_t> pocket, Eigen::VectorXd pro_force, Eigen::VectorXd displacenment)
+void ProAnalysis::gen_pocket_force(bool & flag, Eigen::VectorXd &pocket_force, std::list<size_t> pocket, Eigen::VectorXd pro_force, Eigen::VectorXd displacement)
 {
 	pocket_force = Eigen::VectorXd::Zero(covariance.rows());
 
 	size_t ndim = pocket.size() * 3;
 	Eigen::MatrixXd X = Eigen::MatrixXd::Zero(covariance.rows(), ndim);
-	Eigen::VectorXd Y = displacenment;
+	Eigen::VectorXd Y = displacement;
 	Eigen::VectorXd coeff = Eigen::VectorXd::Zero(ndim);
 
 	size_t i = 0;
@@ -368,24 +376,46 @@ void ProAnalysis::gen_pocket_force(Eigen::VectorXd &pocket_force, std::list<size
 		pocket_force(*it * 3 + 1) = coeff(i * 3 + 1);
 		pocket_force(*it * 3 + 2) = coeff(i * 3 + 2);
 	}
-	
+	flag = true;
 }
 
-void ProAnalysis::calc_energy_known(double &proenergy, double &pocketenergy, double &totenergy, Eigen::VectorXd pocket_force, Eigen::MatrixXd distmat)
+void ProAnalysis::gen_pocket_force(bool & flag, Eigen::VectorXd & pocket_force, Eigen::VectorXd fixed_force, std::list<size_t> pocket, std::list<size_t> fixed_pocket, Eigen::VectorXd pro_force, Eigen::VectorXd displacement)
 {
-	Eigen::ArrayXXd distdiffmat = distmat - ProE.get_distmat();
-	proenergy = (distdiffmat.pow(2) * ProE.get_kmat()).sum();
-	pocketenergy = -pocket_force.transpose() * covariance * pocket_force;
-	totenergy = proenergy + pocketenergy;
+	Eigen::VectorXd equiv_displacement = displacement - covariance * fixed_force;
+	std::list<size_t> unfixed_pocket;
+	for (std::list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
+		if (!in_pocket(fixed_pocket, *it))
+			unfixed_pocket.push_back(*it);
+	gen_pocket_force(flag, pocket_force, unfixed_pocket, pro_force, equiv_displacement);
+	pocket_force += fixed_force;
+	flag = true;
 }
 
-void ProAnalysis::calc_energy_unknown(double &proenergy, double &pocketenergy, double &totenergy, Eigen::VectorXd pocket_force)
+void ProAnalysis::calc_energy_known(bool flag, double &proenergy, double &pocketenergy, double &totenergy, Eigen::VectorXd pocket_force, Eigen::MatrixXd distmat)
 {
-	Eigen::VectorXd procoord = covariance * pocket_force + ProE.get_procoord();
-	Eigen::ArrayXXd distdiffmat = gen_distmat(procoord) - ProE.get_distmat();
-	proenergy = (distdiffmat.pow(2) * ProE.get_kmat()).sum();
-	pocketenergy = -pocket_force.transpose() * covariance * pocket_force;
-	totenergy = proenergy + pocketenergy;
+	if (flag)
+	{
+		Eigen::ArrayXXd distdiffmat = distmat - ProE.get_distmat();
+		proenergy = (distdiffmat.pow(2) * ProE.get_kmat()).sum();
+		pocketenergy = -pocket_force.transpose() * covariance * pocket_force;
+		totenergy = proenergy + pocketenergy;
+	}
+	else
+		std::cout << "[Error] Can not calculate energy without pocket force generated. Call \"gen_pocket*_force\" function first." << std::endl;
+}
+
+void ProAnalysis::calc_energy_unknown(bool flag, double &proenergy, double &pocketenergy, double &totenergy, Eigen::VectorXd pocket_force)
+{
+	if (flag)
+	{
+		Eigen::VectorXd procoord = covariance * pocket_force + ProE.get_procoord();
+		Eigen::ArrayXXd distdiffmat = gen_distmat(procoord) - ProE.get_distmat();
+		proenergy = (distdiffmat.pow(2) * ProE.get_kmat()).sum();
+		pocketenergy = -pocket_force.transpose() * covariance * pocket_force;
+		totenergy = proenergy + pocketenergy;
+	}
+	else
+		std::cout << "[Error] Can not calculate energy without pocket force generated. Call \"gen_pocket*_force\" function first." << std::endl;
 }
 
 void ProAnalysis::debug_energy_unknown(Eigen::VectorXd pocket_force)

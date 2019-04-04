@@ -27,12 +27,14 @@ int main(int argc, char** argv)
 	Metj.set_convergence(1e-6);
 	Metj.set_iteration_times(1000000);
 	Metj.gen_pocketA(3.5);
+	Metj.gen_pocketA_force();
 	Metj.test_pocketA();
 
 	Metj.set_learning_step(1e-6);
 	Metj.set_convergence(1e-6);
 	Metj.set_iteration_times(1000000);
 	Metj.gen_pocketAS(3.5);
+	Metj.gen_pocketAS_force();
 	Metj.test_pocketAS();
 
 	Metj.gen_free_energy();

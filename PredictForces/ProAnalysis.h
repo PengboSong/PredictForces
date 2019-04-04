@@ -72,16 +72,13 @@ public:
 	}
 
 	void test_pocketS() {
-		if (ES_info)
-			test_pocket(ES_info, pocketS, pocketS_force, ES_force, S_fitprocoord, ES_displacement);
+		test_pocket(has_pocketS_force_flag, ES_info, pocketS, pocketS_force, S_fitprocoord);
 	}
 	void test_pocketA() {
-		if (EA_info)
-			test_pocket(EA_info, pocketA, pocketA_force, EA_force, A_fitprocoord, EA_displacement);
+		test_pocket(has_pocketA_force_flag, EA_info, pocketA, pocketA_force, A_fitprocoord);
 	}
 	void test_pocketAS() {
-		if (EAS_info)
-			test_pocket(EAS_info, pocketAS, pocketAS_force, EAS_force, AS_fitprocoord, EAS_displacement);
+		test_pocket(has_pocketAS_force_flag, EAS_info, pocketAS, pocketAS_force, AS_fitprocoord);
 	}
 
 	bool in_pocketS(size_t id) {
@@ -129,38 +126,45 @@ public:
 
 	double calc_ES_rmsd() {
 		if (ES_info)
-			calc_model_rmsd(pocketS, pocketS_force, ES_force, S_fitprocoord, ES_displacement);
+			calc_model_rmsd(has_pocketS_force_flag, pocketS_force, S_fitprocoord);
 	}
 	double calc_EA_rmsd() {
 		if (EA_info)
-			calc_model_rmsd(pocketA, pocketA_force, EA_force, A_fitprocoord, EA_displacement);
+			calc_model_rmsd(has_pocketA_force_flag, pocketA_force, A_fitprocoord);
 	}
 	double calc_EAS_rmsd() {
 		if (EAS_info)
-			calc_model_rmsd(pocketAS, pocketAS_force, EAS_force, AS_fitprocoord, EAS_displacement);
+			calc_model_rmsd(has_pocketAS_force_flag, pocketAS_force, AS_fitprocoord);
 	}
 
 	void gen_pocketS_force() {
 		if (ES_info)
-			gen_pocket_force(pocketS_force, pocketS, ES_force, ES_displacement);
+			gen_pocket_force(has_pocketS_force_flag, pocketS_force, pocketS, ES_force, ES_displacement);
 	}
 	void gen_pocketA_force() {
 		if (EA_info)
-			gen_pocket_force(pocketA_force, pocketA, EA_force, EA_displacement);
+			gen_pocket_force(has_pocketA_force_flag, pocketA_force, pocketA, EA_force, EA_displacement);
 	}
 	void gen_pocketAS_force() {
 		if (EAS_info)
-			gen_pocket_force(pocketAS_force, pocketAS, EAS_force, EAS_displacement);
+		{
+			if (has_pocketS_force_flag)
+				gen_pocket_force(has_pocketS_force_flag, pocketAS_force, pocketS_force, pocketAS, pocketS, EAS_force, EAS_displacement);
+			else if (has_pocketA_force_flag)
+				gen_pocket_force(has_pocketA_force_flag, pocketAS_force, pocketA_force, pocketAS, pocketA, EAS_force, EAS_displacement);
+			else
+				gen_pocket_force(has_pocketAS_force_flag, pocketAS_force, pocketAS, EAS_force, EAS_displacement);
+		}			
 	}
 
 	void gen_free_energy();
 	
 private:
-	double calc_model_rmsd(std::list<size_t> pocket, Eigen::VectorXd pocket_force, Eigen::VectorXd pro_force, Eigen::VectorXd refcoord, Eigen::VectorXd displacenment);
+	double calc_model_rmsd(bool flag, Eigen::VectorXd pocket_force, Eigen::VectorXd refcoord);
 	
 	void show_pocket(std::list<size_t> pocket);
 
-	void test_pocket(bool info, std::list<size_t> pocket, Eigen::VectorXd pocket_force, Eigen::VectorXd pro_force, Eigen::VectorXd refcoord, Eigen::VectorXd displacenment);
+	void test_pocket(bool flag, bool info, std::list<size_t> pocket, Eigen::VectorXd pocket_force, Eigen::VectorXd refcoord);
 
 	void show_pocket_force(std::list<size_t> pocket, Eigen::VectorXd pocket_force);
 
@@ -170,13 +174,15 @@ private:
 
 	void remove_from_pocket(std::list<size_t> pocket, size_t id);
 
-	void gen_pocket(bool has_ligand, std::list<size_t> &pocket, double cutoff, Eigen::VectorXd dist2ligand);
+	void gen_pocket(bool has_ligand, std::list<size_t> & pocket, double cutoff, Eigen::VectorXd dist2ligand);
 
-	void gen_pocket_force(Eigen::VectorXd & pocket_force, std::list<size_t> pocket, Eigen::VectorXd pro_force, Eigen::VectorXd displacenment);
+	void gen_pocket_force(bool & flag, Eigen::VectorXd & pocket_force, std::list<size_t> pocket, Eigen::VectorXd pro_force, Eigen::VectorXd displacement);
+
+	void gen_pocket_force(bool & flag, Eigen::VectorXd & pocket_force, Eigen::VectorXd fixed_force, std::list<size_t> pocket, std::list<size_t> fixed_pocket, Eigen::VectorXd pro_force, Eigen::VectorXd displacement);
 	
-	void calc_energy_known(double & proenergy, double & pocketenergy, double & totenergy, Eigen::VectorXd pocket_force, Eigen::MatrixXd distmat);
+	void calc_energy_known(bool flag, double & proenergy, double & pocketenergy, double & totenergy, Eigen::VectorXd pocket_force, Eigen::MatrixXd distmat);
 
-	void calc_energy_unknown(double & proenergy, double & pocketenergy, double & totenergy, Eigen::VectorXd pocket_force);
+	void calc_energy_unknown(bool flag, double & proenergy, double & pocketenergy, double & totenergy, Eigen::VectorXd pocket_force);
 
 	void debug_energy_unknown(Eigen::VectorXd pocket_force);
 		
@@ -234,6 +240,10 @@ private:
 	std::list<size_t> pocketS;
 	std::list<size_t> pocketA;
 	std::list<size_t> pocketAS;
+
+	bool has_pocketS_force_flag = false;
+	bool has_pocketA_force_flag = false;
+	bool has_pocketAS_force_flag = false;
 
 	// Matrix formats
 	Eigen::IOFormat CleanFmt = Eigen::IOFormat(4, 0, ", ", "\n", "[", "]");
