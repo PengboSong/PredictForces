@@ -11,14 +11,22 @@ Pro::Pro(std::string fpath, bool has_ligand_flag, std::set<std::string> exclude,
 		exclres.emplace(*it);
 	k_default = k_inter = k_intra = k;
 	cutoff_inter = cutoff_intra = cutoff;
+	std::cout << std::setiosflags(std::ios::fixed) << std::setprecision(1);
+	std::cout << "[Info] Spring constant = " << k << " J/(mol A^2)." << std::endl;
+	std::cout << "[Info] Cutoff = " << cutoff << " A." << std::endl;
 	read(fpath);
+	std::cout << "[Info] Successfully loaded protein at path " << fpath << "." << std::endl;
 	gen_coord();
 	gen_distmat();
 	gen_contact();
 	pairn = contact_pairs.size();
-	gen_hessian();
-	gen_covariance();
-	gen_dist2ligand();
+	std::cout << "[Info] Coordinate matrix, distance matrix, contact map have been generated for this protein." << std::endl;
+	if (with_ligand_flag)
+	{
+		gen_dist2ligand();
+		std::cout << "[Info] Residue distance to ligand has been calculated." << std::endl;
+	}
+	std::cout << std::resetiosflags(std::ios::fixed);
 }
 
 Pro::~Pro()
@@ -187,9 +195,9 @@ void Pro::gen_coord()
 	}
 }
 
-void Pro::gen_hessian()
+Eigen::MatrixXd Pro::gen_hessian()
 {
-	hessian = Eigen::MatrixXd::Zero(3 * resn, 3 * resn);
+	Eigen::MatrixXd hessian = Eigen::MatrixXd::Zero(3 * resn, 3 * resn);
 
 	if (gen_contact_flag)
 	{
@@ -239,35 +247,36 @@ void Pro::gen_hessian()
 			hessian(3 * pi + 1, 3 * pi + 2) -= hyz;
 			hessian(3 * pi + 2, 3 * pi + 1) -= hyz;
 		}
-
-		gen_hessian_flag = true;
 	}
+	return hessian;
 }
 
-void Pro::gen_covariance()
+Eigen::MatrixXd Pro::gen_covariance(Eigen::MatrixXd hessian)
 {
-	covariance = Eigen::MatrixXd::Zero(3 * resn, 3 * resn);
+	Eigen::MatrixXd covariance = Eigen::MatrixXd::Zero(3 * resn, 3 * resn);
 
-	if (gen_hessian_flag)
+	Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigensolver(hessian);
+	Eigen::VectorXd eigenvalues = eigensolver.eigenvalues();
+	Eigen::VectorXd zero2inf_eigenvalues = eigenvalues;
+	Eigen::MatrixXd eigenvectors = eigensolver.eigenvectors();
+	std::vector<size_t> zeromodes, nonzeromodes;
+	size_t zeromoden = calc_zero_modes(eigenvalues, zero2inf_eigenvalues);
+
+	if (zeromoden == 6)
 	{
-		Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigensolver(hessian);
-		Eigen::VectorXd eigenvalues = eigensolver.eigenvalues();
-		Eigen::MatrixXd eigenvectors = eigensolver.eigenvectors();
-		std::vector<size_t> zeromodes, nonzeromodes;
-		size_t zeromoden = calc_zero_modes(eigenvalues, &zeromodes, &nonzeromodes);
-
-		if (zeromoden == 6)
-		{
-			for (size_t i = 0; i < 3 * resn; ++i)
-				for (size_t j = 0; j < 3 * resn; ++j)
-					for (std::vector<size_t>::iterator k = nonzeromodes.begin(); k != nonzeromodes.end(); ++k)
-						covariance(i, j) += eigenvectors(*k, i) * eigenvectors(*k, j) / eigenvalues(*k);
-			gen_covariance_flag = true;
-		}
-		else
-			std::cout << "[Error] Hessian matrix has " << zeromoden << " zero modes. Please check it before constructing covariance matrix." << std::endl;
+		Eigen::MatrixXd U = Eigen::ArrayXXd(eigenvectors).colwise() / Eigen::ArrayXd(zero2inf_eigenvalues);
+		covariance = (kB * Navo * Temp / k_default) * (eigenvectors.transpose() * U);
+		/*
+		for (size_t i = 0; i < 3 * resn; ++i)
+			for (size_t j = 0; j < 3 * resn; ++j)
+				for (std::vector<size_t>::iterator k = nonzeromodes.begin(); k != nonzeromodes.end(); ++k)
+					covariance(i, j) += eigenvectors(*k, i) * eigenvectors(*k, j) / eigenvalues(*k);
+		*/
 	}
+	else
+		std::cout << "[Error] Hessian matrix has " << zeromoden << " zero modes. Please check it before constructing covariance matrix." << std::endl;
 
+	return covariance;
 }
 
 void Pro::gen_distmat()
@@ -314,7 +323,7 @@ size_t Pro::calc_zero_modes(Eigen::VectorXd eigenvalues, std::vector<size_t> *ze
 	size_t count = 0;
 	for (size_t i = 0; i < size_t(eigenvalues.size()); i++)
 	{
-		if (eigenvalues(i) == 0.0)
+		if (eigenvalues(i) == 0.0 || abs(eigenvalues(i)) < 1e-10 )
 		{
 			++count;
 			zeromodes->push_back(i);
@@ -324,6 +333,21 @@ size_t Pro::calc_zero_modes(Eigen::VectorXd eigenvalues, std::vector<size_t> *ze
 			nonzeromodes->push_back(i);
 		}
 	}
+	return count;
+}
+
+size_t Pro::calc_zero_modes(Eigen::VectorXd eigenvalues, Eigen::VectorXd &zero2inf_eigenvalues)
+{
+	size_t count = 0;
+
+	zero2inf_eigenvalues = eigenvalues;
+
+	for (size_t i = 0; i < size_t(eigenvalues.size()); i++)
+		if (eigenvalues(i) == 0.0 || abs(eigenvalues(i)) < 1e-10)
+		{
+			zero2inf_eigenvalues(i) = std::numeric_limits<double>::infinity();
+			++count;
+		}
 	return count;
 }
 
@@ -456,52 +480,6 @@ Eigen::MatrixXd Pro::get_distmat()
 Eigen::ArrayXXd Pro::get_kmat()
 {
 	return kmat;
-}
-
-Eigen::MatrixXd Pro::get_hessian()
-{
-	return hessian;
-}
-
-Eigen::Matrix3d Pro::get_hessian(size_t i, size_t j)
-{
-	if (gen_hessian_flag && i < resn && j < resn)
-		return Eigen::Matrix3d(hessian.block(3 * i, 3 * j, 3, 3));
-	else
-		return Eigen::Matrix3d();
-}
-
-double Pro::get_hessian_s(size_t si, size_t sj)
-{
-	if (gen_hessian_flag && si < 3 * resn && sj < 3 * resn)
-		return hessian(si, sj);
-	else
-		return 0.0;
-}
-
-void Pro::write_hessian(std::string writepath)
-{
-	if (gen_hessian_flag)
-	{
-		std::ofstream hessianf(writepath);
-		if (hessianf.is_open())
-		{
-			hessianf << hessian.format(CleanFmt);
-			hessianf.close();
-			std::cout << "Hessian matrix has been written to " << writepath << ". " << std::endl;
-		}
-	}
-}
-
-void Pro::write_covariance(std::string writepath)
-{
-	std::ofstream covariancef(writepath);
-	if (covariancef.is_open())
-	{
-		covariancef << covariance.format(CleanFmt);
-		covariancef.close();
-		std::cout << "Covariance matrix has been written to " << writepath << ". " << std::endl;
-	}
 }
 
 bool Pro::empty()

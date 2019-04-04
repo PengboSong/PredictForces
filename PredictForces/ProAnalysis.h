@@ -6,9 +6,6 @@
 #include "Pro.h"
 
 constexpr double PI = 3.1415926535897932;
-constexpr double Navo = 6.02214076e23;
-constexpr double kB = 1.380649e-23;
-constexpr double Temp = 298.15;
 
 class ProAnalysis
 {
@@ -18,12 +15,15 @@ public:
 	ProAnalysis(Pro apo, Pro binding, Pro allostery, Pro complex);
 	~ProAnalysis();
 
-	Eigen::MatrixXd get_hessian_matrix() {
-		return H;
-	}
-	Eigen::MatrixXd get_convariance_matrix() {
-		return G;
-	}
+	Eigen::MatrixXd get_hessian();
+	Eigen::Matrix3d get_hessian(size_t i, size_t j);
+	double get_hessian_s(size_t si, size_t sj);
+	void write_hessian(std::string writepath);
+
+	Eigen::MatrixXd get_covariance();
+	Eigen::Matrix3d get_covariance(size_t i, size_t j);
+	double get_covariance_s(size_t si, size_t sj);
+	void write_covariance(std::string writepath);
 
 	void set_learning_step(double step)
 	{
@@ -61,17 +61,27 @@ public:
 		show_pocket(pocketAS);
 	}
 
+	void show_pocketS_force() {
+		show_pocket_force(pocketS, pocketS_force);
+	}
+	void show_pocketA_force() {
+		show_pocket_force(pocketA, pocketA_force);
+	}
+	void show_pocketAS_force() {
+		show_pocket_force(pocketAS, pocketAS_force);
+	}
+
 	void test_pocketS() {
 		if (ES_info)
-			test_pocket(ES_info, pocketS, pocketS_force, ES_force, ProS.get_procoord(), ES_displacement);
+			test_pocket(ES_info, pocketS, pocketS_force, ES_force, S_fitprocoord, ES_displacement);
 	}
 	void test_pocketA() {
 		if (EA_info)
-			test_pocket(EA_info, pocketA, pocketA_force, EA_force, ProA.get_procoord(), EA_displacement);
+			test_pocket(EA_info, pocketA, pocketA_force, EA_force, A_fitprocoord, EA_displacement);
 	}
 	void test_pocketAS() {
 		if (EAS_info)
-			test_pocket(EAS_info, pocketAS, pocketAS_force, EAS_force, ProAS.get_procoord(), EAS_displacement);
+			test_pocket(EAS_info, pocketAS, pocketAS_force, EAS_force, AS_fitprocoord, EAS_displacement);
 	}
 
 	bool in_pocketS(size_t id) {
@@ -119,15 +129,15 @@ public:
 
 	double calc_ES_rmsd() {
 		if (ES_info)
-			calc_model_rmsd(pocketS, pocketS_force, ES_force, ProS.get_procoord(), ES_displacement);
+			calc_model_rmsd(pocketS, pocketS_force, ES_force, S_fitprocoord, ES_displacement);
 	}
 	double calc_EA_rmsd() {
 		if (EA_info)
-			calc_model_rmsd(pocketA, pocketA_force, EA_force, ProA.get_procoord(), EA_displacement);
+			calc_model_rmsd(pocketA, pocketA_force, EA_force, A_fitprocoord, EA_displacement);
 	}
 	double calc_EAS_rmsd() {
 		if (EAS_info)
-			calc_model_rmsd(pocketAS, pocketAS_force, EAS_force, ProAS.get_procoord(), EAS_displacement);
+			calc_model_rmsd(pocketAS, pocketAS_force, EAS_force, AS_fitprocoord, EAS_displacement);
 	}
 
 	void gen_pocketS_force() {
@@ -177,26 +187,29 @@ private:
 	Pro ProA;
 	Pro ProAS;
 
+	Eigen::VectorXd S_fitprocoord;
 	Eigen::VectorXd S_dist2ligand;
 	Eigen::VectorXd pocketS_force;
 	double S_proenergy = 0.0;
 	double S_pocketenergy = 0.0;
 	double S_energy = 0.0;
 
+	Eigen::VectorXd A_fitprocoord;
 	Eigen::VectorXd A_dist2ligand;
 	Eigen::VectorXd pocketA_force;
 	double A_proenergy = 0.0;
 	double A_pocketenergy = 0.0;
 	double A_energy = 0.0;
 
+	Eigen::VectorXd AS_fitprocoord;
 	Eigen::VectorXd AS_dist2ligand;
 	Eigen::VectorXd pocketAS_force;
 	double AS_proenergy = 0.0;
 	double AS_pocketenergy = 0.0;
 	double AS_energy = 0.0;
 
-	Eigen::MatrixXd H;
-	Eigen::MatrixXd G;
+	Eigen::MatrixXd hessian;
+	Eigen::MatrixXd covariance;
 
 	double ddG = 0.0;
 
@@ -221,6 +234,9 @@ private:
 	std::list<size_t> pocketS;
 	std::list<size_t> pocketA;
 	std::list<size_t> pocketAS;
+
+	// Matrix formats
+	Eigen::IOFormat CleanFmt = Eigen::IOFormat(4, 0, ", ", "\n", "[", "]");
 
 	// BGD parameters
 	double LEARNING_STEP = 1e-6;

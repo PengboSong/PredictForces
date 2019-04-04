@@ -1,15 +1,21 @@
 #pragma once
 #include <fstream>
 #include <iostream>
+#include <iomanip>
 #include <string>
 #include <vector>
 #include <map>
 #include <set>
 #include <utility>
+#include <limits>
 
 #include <Eigen/Dense>
 
 #include "read_pdb.h"
+
+constexpr double Navo = 6.02214076e23;
+constexpr double kB = 1.380649e-23;
+constexpr double Temp = 298.15;
 
 class Pro
 {
@@ -47,12 +53,9 @@ public:
 	Eigen::MatrixXd get_distmat();
 	Eigen::ArrayXXd get_kmat();
 
-	Eigen::MatrixXd get_hessian();
-	Eigen::Matrix3d get_hessian(size_t i, size_t j);
-	double get_hessian_s(size_t si, size_t sj);
+	Eigen::MatrixXd gen_hessian();
 
-	void write_hessian(std::string writepath);
-	void write_covariance(std::string writepath);
+	Eigen::MatrixXd gen_covariance(Eigen::MatrixXd hessian);
 
 	bool empty();
 
@@ -60,16 +63,14 @@ private:
 	double distance(size_t i, size_t j);
 
 	size_t calc_zero_modes(Eigen::VectorXd eigenvalues, std::vector<size_t> *zeromodes, std::vector<size_t> *nonzeromodes);
+	
+	size_t calc_zero_modes(Eigen::VectorXd eigenvalues, Eigen::VectorXd &zero2inf_eigenvalues);
 
 	void read(std::string fpath);
 
 	void gen_contact();
 	
 	void gen_coord();
-
-	void gen_hessian();
-
-	void gen_covariance();
 
 	void gen_distmat();
 
@@ -84,8 +85,6 @@ private:
 	std::vector<std::pair<size_t, size_t>> contact_pairs;
 	Eigen::ArrayXXd kmat;
 	Eigen::MatrixXd distmat;
-	Eigen::MatrixXd hessian;
-	Eigen::MatrixXd covariance;
 	Eigen::VectorXd procoord;
 	std::map<size_t, Eigen::VectorXd> rescoords;
 	Eigen::VectorXd ligandcoord;
@@ -94,8 +93,6 @@ private:
 	std::set<std::string> prores = { "ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE", "LEU", "LYS", "MET", "PHE", "PRO", "SER", "THR", "TRP", "TYR", "VAL" };
 	std::set<std::string> ligandres = {};
 	std::set<std::string> exclres = { "HOH" };
-
-	Eigen::IOFormat CleanFmt = Eigen::IOFormat(4, 0, ", ", "\n", "[", "]");
 
 	size_t resn = 0;
 	size_t proatomn = 0;
@@ -109,8 +106,6 @@ private:
 
 	bool gen_distmat_flag = false;
 	bool gen_contact_flag = false;
-	bool gen_hessian_flag = false;
-	bool gen_covariance_flag = false;
 
 	bool with_ligand_flag = false;
 };
