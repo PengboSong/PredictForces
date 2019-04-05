@@ -1,5 +1,10 @@
 #pragma once
 #include <string>
+#include <boost/lexical_cast.hpp>
+#include <boost/algorithm/string.hpp>
+
+using boost::algorithm::trim;
+using boost::lexical_cast;
 
 struct ResInfo
 {
@@ -23,6 +28,8 @@ struct AtomInfo
 	double z;
 	double bfactor;
 };
+
+std::string sslice(size_t begin, size_t size, std::string in);
 
 size_t read_resid(std::string line);
 

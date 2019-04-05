@@ -17,12 +17,15 @@ int main(int argc, char** argv)
 	std::string p38a1 = dataset + "p38\\1kv1.pdb";
 	std::string p38a2 = dataset + "p38\\1kv2.pdb";
 
-	Pro Apo(metjapo, false);
-	Pro Alle(metja, true);
+	Pro Apo(metjapo, false, {"PO4"});
+	Pro Alle(metja, true, {"MG"});
 	Pro Complex(metjc, true);
 
 	ProAnalysis Metj(Apo, Pro::Pro(), Alle, Complex);
 	
+	Metj.interactive();
+
+	/*
 	Metj.set_learning_step(1e-6);
 	Metj.set_convergence(1e-6);
 	Metj.set_iteration_times(1000000);
@@ -38,6 +41,7 @@ int main(int argc, char** argv)
 	Metj.test_pocketAS();
 
 	Metj.gen_free_energy();
+	*/
 	
 	std::cin >> tmp;
 	return 0;

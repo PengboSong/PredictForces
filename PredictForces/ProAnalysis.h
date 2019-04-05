@@ -2,8 +2,13 @@
 #include <iomanip>
 #include <algorithm>
 #include <list>
+#include <boost/algorithm/string.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include "Pro.h"
+
+using boost::algorithm::trim;
+using boost::lexical_cast;
 
 constexpr double PI = 3.1415926535897932;
 
@@ -14,6 +19,9 @@ public:
 	ProAnalysis(Pro apo, Pro binding);
 	ProAnalysis(Pro apo, Pro binding, Pro allostery, Pro complex);
 	~ProAnalysis();
+
+	void interactive_pocket(std::string mode);
+	void interactive();
 
 	Eigen::MatrixXd get_hessian();
 	Eigen::Matrix3d get_hessian(size_t i, size_t j);
@@ -149,9 +157,9 @@ public:
 		if (EAS_info)
 		{
 			if (has_pocketS_force_flag)
-				gen_pocket_force(has_pocketS_force_flag, pocketAS_force, pocketS_force, pocketAS, pocketS, EAS_force, EAS_displacement);
+				gen_pocket_force(has_pocketAS_force_flag, pocketAS_force, pocketS_force, pocketAS, pocketS, EAS_force, EAS_displacement);
 			else if (has_pocketA_force_flag)
-				gen_pocket_force(has_pocketA_force_flag, pocketAS_force, pocketA_force, pocketAS, pocketA, EAS_force, EAS_displacement);
+				gen_pocket_force(has_pocketAS_force_flag, pocketAS_force, pocketA_force, pocketAS, pocketA, EAS_force, EAS_displacement);
 			else
 				gen_pocket_force(has_pocketAS_force_flag, pocketAS_force, pocketAS, EAS_force, EAS_displacement);
 		}			

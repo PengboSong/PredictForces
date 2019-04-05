@@ -1,9 +1,15 @@
 #include "read_pdb.h"
-#include "addstr.h"
+
+std::string sslice(size_t begin, size_t end, std::string in)
+{
+	std::string out = in.substr(begin, end - begin);
+	trim(out);
+	return out;
+}
 
 size_t read_resid(std::string line)
 {
-	return size_t(ssliceti(22, 26, line));
+	return lexical_cast<size_t>(sslice(22, 26, line));
 }
 
 std::string read_record(std::string line)
@@ -31,26 +37,26 @@ ResInfo read_res(std::string line)
 	ResInfo res;
 	res.resname = sslice(17, 20, line);
 	res.chain = sslice(21, 22, line);
-	res.resid = ssliceti(22, 26, line);
-	res.x = sslicetd(30, 38, line);
-	res.y = sslicetd(38, 46, line);
-	res.z = sslicetd(46, 54, line);
-	res.bfactor = sslicetd(60, 66, line);
+	res.resid = lexical_cast<size_t>(sslice(22, 26, line));
+	res.x = lexical_cast<double>(sslice(30, 38, line));
+	res.y = lexical_cast<double>(sslice(38, 46, line));
+	res.z = lexical_cast<double>(sslice(46, 54, line));
+	res.bfactor = lexical_cast<double>(sslice(60, 66, line));
 	return res;
 }
 
 AtomInfo read_atom(std::string line)
 {
 	AtomInfo atom;
-	atom.atomid = ssliceti(6, 11, line);
+	atom.resid = lexical_cast<size_t>(sslice(6, 11, line));
 	atom.atomname = sslice(12, 16, line);
 	atom.resname = sslice(17, 20, line);
 	atom.chain = sslice(21, 22, line);
-	atom.resid = ssliceti(22, 26, line);
-	atom.x = sslicetd(30, 38, line);
-	atom.y = sslicetd(38, 46, line);
-	atom.z = sslicetd(46, 54, line);
-	atom.bfactor = sslicetd(60, 66, line);
+	atom.resid = lexical_cast<size_t>(sslice(22, 26, line));
+	atom.x = lexical_cast<double>(sslice(30, 38, line));
+	atom.y = lexical_cast<double>(sslice(38, 46, line));
+	atom.z = lexical_cast<double>(sslice(46, 54, line));
+	atom.bfactor = lexical_cast<double>(sslice(60, 66, line));
 
 	return atom;
 }
