@@ -283,14 +283,20 @@ void ProAnalysis::gen_free_energy()
 	{
 		gen_pocket_force(has_pocketS_force_flag, pocketS_force, pocketS, ES_force, ES_displacement);
 		calc_energy_known(has_pocketS_force_flag, S_proenergy, S_pocketenergy, S_energy, pocketS_force, ProS.get_distmat());
+		calc_energy_unknown(has_pocketS_force_flag, S_proenergy, S_pocketenergy, S_energy, pocketS_force);
 
 		gen_pocket_force(has_pocketA_force_flag, pocketA_force, pocketA, EA_force, EA_displacement);
 		calc_energy_known(has_pocketA_force_flag, A_proenergy, A_pocketenergy, A_energy, pocketA_force, ProA.get_distmat());
+		calc_energy_unknown(has_pocketA_force_flag, A_predict_proenergy, A_predict_proenergy, A_predict_energy, pocketA_force);
 
 		pocketAS_force = pocketS_force + pocketA_force; // Right?
 		has_pocketAS_force_flag = true;
 		calc_energy_unknown(has_pocketAS_force_flag, AS_proenergy, AS_pocketenergy, AS_energy, pocketAS_force);
+		AS_predict_energy = AS_proenergy;
+		AS_predict_pocketenergy = AS_pocketenergy;
+		AS_predict_energy = AS_energy;
 		ddG = AS_energy - S_energy - A_energy;
+		ddG_predict = AS_predict_energy - S_predict_energy - A_predict_energy;
 
 		print_energy_results();
 	}
@@ -298,9 +304,11 @@ void ProAnalysis::gen_free_energy()
 	{
 		gen_pocket_force(has_pocketS_force_flag, pocketS_force, pocketS, ES_force, ES_displacement);
 		calc_energy_known(has_pocketS_force_flag, S_proenergy, S_pocketenergy, S_energy, pocketS_force, ProS.get_distmat());
+		calc_energy_unknown(has_pocketS_force_flag, S_proenergy, S_pocketenergy, S_energy, pocketS_force);
 
 		gen_pocket_force(has_pocketAS_force_flag, pocketAS_force, pocketAS, EAS_force, EAS_displacement);
 		calc_energy_known(has_pocketAS_force_flag, AS_proenergy, AS_pocketenergy, AS_energy, pocketAS_force, ProAS.get_distmat());
+		calc_energy_unknown(has_pocketAS_force_flag, AS_predict_proenergy, AS_predict_proenergy, AS_predict_energy, pocketAS_force);
 
 		pocketA_force = Eigen::VectorXd::Zero(pocketAS_force.size());
 		for (std::list<size_t>::iterator it = pocketAS.begin(); it != pocketAS.end(); ++it)
@@ -316,7 +324,11 @@ void ProAnalysis::gen_free_energy()
 		has_pocketA_force_flag = true;
 
 		calc_energy_unknown(has_pocketA_force_flag, A_proenergy, A_pocketenergy, A_energy, pocketA_force);
+		A_predict_energy = A_proenergy;
+		A_predict_pocketenergy = A_pocketenergy;
+		A_predict_energy = A_energy;
 		ddG = AS_energy - S_energy - A_energy;
+		ddG_predict = AS_predict_energy - S_predict_energy - A_predict_energy;
 
 		print_energy_results();
 	}
@@ -324,9 +336,11 @@ void ProAnalysis::gen_free_energy()
 	{
 		gen_pocket_force(has_pocketA_force_flag, pocketA_force, pocketA, EA_force, EA_displacement);
 		calc_energy_known(has_pocketA_force_flag, A_proenergy, A_pocketenergy, A_energy, pocketA_force, ProA.get_distmat());
+		calc_energy_unknown(has_pocketA_force_flag, A_predict_proenergy, A_predict_proenergy, A_predict_energy, pocketA_force);
 
 		gen_pocket_force(has_pocketAS_force_flag, pocketAS_force, pocketAS, EAS_force, EAS_displacement);
 		calc_energy_known(has_pocketAS_force_flag, AS_proenergy, AS_pocketenergy, AS_energy, pocketAS_force, ProAS.get_distmat());
+		calc_energy_unknown(has_pocketAS_force_flag, AS_predict_proenergy, AS_predict_proenergy, AS_predict_energy, pocketAS_force);
 
 		pocketS_force = Eigen::VectorXd::Zero(pocketAS_force.size());
 		for (std::list<size_t>::iterator it = pocketAS.begin(); it != pocketAS.end(); ++it)
@@ -342,7 +356,11 @@ void ProAnalysis::gen_free_energy()
 		has_pocketS_force_flag = true;
 
 		calc_energy_unknown(has_pocketS_force_flag, S_proenergy, S_pocketenergy, S_energy, pocketS_force);
+		S_predict_energy = S_proenergy;
+		S_predict_pocketenergy = S_pocketenergy;
+		S_predict_energy = S_energy;
 		ddG = AS_energy - S_energy - A_energy;
+		ddG_predict = AS_predict_energy - S_predict_energy - A_predict_energy;
 
 		print_energy_results();
 	}
@@ -576,6 +594,19 @@ void ProAnalysis::print_energy_results()
 	std::cout << "Pro: " << AS_proenergy * 1e-3 << " kJ/mol." << std::endl;
 	std::cout << "Pocket: " << AS_pocketenergy * 1e-3 << " kJ/mol." << std::endl;
 	std::cout << "Change of free energy: " << ddG * 1e-3 << " kJ/mol." << std::endl;
+
+	std::cout << "[Result] Free energy all predict results: " << std::endl;
+	std::cout << std::fixed << std::setprecision(4);
+	std::cout << "Free energy for binding state structure S: " << S_predict_energy * 1e-3 << " kJ/mol." << std::endl;
+	std::cout << "Pro: " << S_predict_proenergy * 1e-3 << " kJ/mol." << std::endl;
+	std::cout << "Pocket: " << S_predict_pocketenergy * 1e-3 << " kJ/mol." << std::endl;
+	std::cout << "Free energy for allostery state structure A: " << A_predict_energy * 1e-3 << " kJ/mol." << std::endl;
+	std::cout << "Pro: " << A_predict_proenergy * 1e-3 << " kJ/mol." << std::endl;
+	std::cout << "Pocket: " << A_predict_pocketenergy * 1e-3 << " kJ/mol." << std::endl;
+	std::cout << "Free energy for complex structure AS: " << AS_predict_energy * 1e-3 << " kJ/mol." << std::endl;
+	std::cout << "Pro: " << AS_predict_proenergy * 1e-3 << " kJ/mol." << std::endl;
+	std::cout << "Pocket: " << AS_predict_pocketenergy * 1e-3 << " kJ/mol." << std::endl;
+	std::cout << "Change of free energy: " << ddG_predict * 1e-3 << " kJ/mol." << std::endl;
 
 }
 

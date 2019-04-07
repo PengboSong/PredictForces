@@ -207,6 +207,9 @@ private:
 	double S_proenergy = 0.0;
 	double S_pocketenergy = 0.0;
 	double S_energy = 0.0;
+	double S_predict_proenergy = 0.0;
+	double S_predict_pocketenergy = 0.0;
+	double S_predict_energy = 0.0;
 
 	Eigen::VectorXd A_fitprocoord;
 	Eigen::VectorXd A_dist2ligand;
@@ -214,6 +217,9 @@ private:
 	double A_proenergy = 0.0;
 	double A_pocketenergy = 0.0;
 	double A_energy = 0.0;
+	double A_predict_proenergy = 0.0;
+	double A_predict_pocketenergy = 0.0;
+	double A_predict_energy = 0.0;
 
 	Eigen::VectorXd AS_fitprocoord;
 	Eigen::VectorXd AS_dist2ligand;
@@ -221,11 +227,15 @@ private:
 	double AS_proenergy = 0.0;
 	double AS_pocketenergy = 0.0;
 	double AS_energy = 0.0;
+	double AS_predict_proenergy = 0.0;
+	double AS_predict_pocketenergy = 0.0;
+	double AS_predict_energy = 0.0;
 
 	Eigen::MatrixXd hessian;
 	Eigen::MatrixXd covariance;
 
 	double ddG = 0.0;
+	double ddG_predict = 0.0;
 
 	bool ES_info = false;
 	Eigen::VectorXd ES_displacement;
