@@ -21,7 +21,7 @@ class Pro
 {
 public:
 	Pro();
-	Pro(std::string fpath, bool has_ligand_flag, std::set<std::string> exclude = { }, double k = 1.0, double cutoff = 10.0);
+	Pro(std::string fpath, bool has_ligand_flag, std::vector<std::string> exclude = { }, double k = 1.0, double cutoff = 10.0);
 	~Pro();
 
 	bool has_ligand();

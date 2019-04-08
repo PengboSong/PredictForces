@@ -4,10 +4,10 @@ Pro::Pro()
 {
 }
 
-Pro::Pro(std::string fpath, bool has_ligand_flag, std::set<std::string> exclude, double k, double cutoff)
+Pro::Pro(std::string fpath, bool has_ligand_flag, std::vector<std::string> exclude, double k, double cutoff)
 {
 	with_ligand_flag = has_ligand_flag;
-	for (std::set<std::string>::iterator it = exclude.begin(); it != exclude.end(); ++it)
+	for (std::vector<std::string>::iterator it = exclude.begin(); it != exclude.end(); ++it)
 		exclres.emplace(*it);
 	k_default = k_inter = k_intra = k;
 	cutoff_inter = cutoff_intra = cutoff;
