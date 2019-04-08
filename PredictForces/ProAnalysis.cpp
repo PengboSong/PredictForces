@@ -105,47 +105,63 @@ void ProAnalysis::interactive_pocket(std::string mode)
 		{
 			para = cmd.substr(3);
 			trim(para);
-			size_t resid = lexical_cast<size_t>(para) - 1;
-			if (resid < ProE.get_resn())
+			if (!para.empty())
 			{
-				if (mode == "S")
-					add_to_pocketS(resid);
-				else if (mode == "A")
-					add_to_pocketA(resid);
-				else if (mode == "AS")
-					add_to_pocketAS(resid);
+				size_t resid = lexical_cast<size_t>(para) - 1;
+				if (resid < ProE.get_resn())
+				{
+					if (mode == "S")
+						add_to_pocketS(resid);
+					else if (mode == "A")
+						add_to_pocketA(resid);
+					else if (mode == "AS")
+						add_to_pocketAS(resid);
+				}
+				else
+					std::cout << "[Info] Input residue ID out of range. Please enter again." << std::endl;
 			}
 			else
-				std::cout << "[Info] Input residue ID out of range. Please enter again." << std::endl;
+				std::cout << "No residue ID given. Please enter again." << std::endl;
+			
 		}
 		else if (cmd.substr(0, 3) == "del")
 		{
 			para = cmd.substr(3);
 			trim(para);
-			size_t resid = lexical_cast<size_t>(para) - 1;
-			if (resid < ProE.get_resn())
+			if (!para.empty())
 			{
-				if (mode == "S")
-					remove_from_pocketS(resid);
-				else if (mode == "A")
-					remove_from_pocketA(resid);
-				else if (mode == "AS")
-					remove_from_pocketAS(resid);
+				size_t resid = lexical_cast<size_t>(para) - 1;
+				if (resid < ProE.get_resn())
+				{
+					if (mode == "S")
+						remove_from_pocketS(resid);
+					else if (mode == "A")
+						remove_from_pocketA(resid);
+					else if (mode == "AS")
+						remove_from_pocketAS(resid);
+				}
+				else
+					std::cout << "[Info] Input residue ID out of range. Please enter again." << std::endl;
 			}
 			else
-				std::cout << "[Info] Input residue ID out of range. Please enter again." << std::endl;
+				std::cout << "No residue ID given. Please enter again." << std::endl;			
 		}
 		else if (cmd.substr(0, 10) == "gen-pocket")
 		{
 			para = cmd.substr(10);
 			trim(para);
-			double cutoff = lexical_cast<double>(para);
-			if (mode == "S")
-				gen_pocketS(cutoff);
-			else if (mode == "A")
-				gen_pocketA(cutoff);
-			else if (mode == "AS")
-				gen_pocketAS(cutoff);
+			if (!para.empty())
+			{
+				double cutoff = lexical_cast<double>(para);
+				if (mode == "S")
+					gen_pocketS(cutoff);
+				else if (mode == "A")
+					gen_pocketA(cutoff);
+				else if (mode == "AS")
+					gen_pocketAS(cutoff);
+			}
+			else
+				std::cout << "No cutoff length given. Please enter again." << std::endl;
 		}
 		else if (cmd == "show")
 		{
