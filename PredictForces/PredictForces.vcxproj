@@ -70,11 +70,12 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>C:\Cpp\boost;C:\Cpp\eigen;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Cpp\boost-1.69.0\stage\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\public\boost;C:\public\eigen;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\public\boost\stage\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>C:\public\eigen-3.3.7;$(IncludePath)</IncludePath>
+    <IncludePath>C:\public\boost;C:\public\eigen</IncludePath>
+    <LibraryPath>C:\public\boost\stage\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <IncludePath>C:\public\eigen-3.3.7;$(IncludePath)</IncludePath>
@@ -127,6 +128,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="manageIO.h" />
     <ClInclude Include="method.h" />
     <ClInclude Include="Pro.h" />
     <ClInclude Include="ProAnalysis.h" />
@@ -134,6 +136,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="manageIO.cpp" />
     <ClCompile Include="method.cpp" />
     <ClCompile Include="Pro.cpp" />
     <ClCompile Include="ProAnalysis.cpp" />

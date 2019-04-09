@@ -8,6 +8,8 @@
 
 #include "Pro.h"
 
+using namespace std;
+using namespace Eigen;
 using boost::algorithm::trim;
 using boost::lexical_cast;
 
@@ -21,18 +23,18 @@ public:
 	ProAnalysis(Pro apo, Pro binding, Pro allostery, Pro complex);
 	~ProAnalysis();
 
-	void interactive_pocket(std::string mode);
+	void interactive_pocket(string mode);
 	void interactive();
 
-	Eigen::MatrixXd get_hessian();
-	Eigen::Matrix3d get_hessian(size_t i, size_t j);
+	MatrixXd get_hessian();
+	Matrix3d get_hessian(size_t i, size_t j);
 	double get_hessian_s(size_t si, size_t sj);
-	void write_hessian(std::string writepath);
+	void write_hessian(string writepath);
 
-	Eigen::MatrixXd get_covariance();
-	Eigen::Matrix3d get_covariance(size_t i, size_t j);
+	MatrixXd get_covariance();
+	Matrix3d get_covariance(size_t i, size_t j);
 	double get_covariance_s(size_t si, size_t sj);
-	void write_covariance(std::string writepath);
+	void write_covariance(string writepath);
 
 	void set_learning_step(double step)
 	{
@@ -50,13 +52,13 @@ public:
 			ITERATION_TIMES = size_t(N);
 	}
 
-	std::list<size_t> get_pocketS() {
+	list<size_t> get_pocketS() {
 		return pocketS;
 	}
-	std::list<size_t> get_pocketA() {
+	list<size_t> get_pocketA() {
 		return pocketA;
 	}
-	std::list<size_t> get_pocketAS() {
+	list<size_t> get_pocketAS() {
 		return pocketAS;
 	}
 
@@ -189,35 +191,35 @@ public:
 	void gen_free_energy();
 	
 private:
-	double calc_model_rmsd(bool flag, Eigen::VectorXd pocket_force, Eigen::VectorXd refcoord);
+	double calc_model_rmsd(bool flag, VectorXd pocket_force, VectorXd refcoord);
 	
-	void show_pocket(std::list<size_t> pocket);
+	void show_pocket(list<size_t> pocket);
 
-	void test_pocket(bool flag, bool info, std::list<size_t> pocket, Eigen::VectorXd pocket_force, Eigen::VectorXd refcoord);
+	void test_pocket(bool flag, bool info, list<size_t> pocket, VectorXd pocket_force, VectorXd refcoord);
 
-	void show_pocket_force(bool flag, std::list<size_t> pocket, Eigen::VectorXd pocket_force);
+	void show_pocket_force(bool flag, list<size_t> pocket, VectorXd pocket_force);
 
-	void show_pro_pocket_force(std::list<size_t> pocket, Eigen::VectorXd pro_force);
+	void show_pro_pocket_force(list<size_t> pocket, VectorXd pro_force);
 
-	void show_pro_all_force(Eigen::VectorXd pro_force);
+	void show_pro_all_force(VectorXd pro_force);
 
-	bool in_pocket(std::list<size_t> pocket, size_t id);
+	bool in_pocket(list<size_t> pocket, size_t id);
 
-	void add_to_pocket(std::list<size_t> pocket, size_t id);
+	void add_to_pocket(list<size_t> pocket, size_t id);
 
-	void remove_from_pocket(std::list<size_t> pocket, size_t id);
+	void remove_from_pocket(list<size_t> pocket, size_t id);
 
-	void gen_pocket(bool has_ligand, std::list<size_t> & pocket, double cutoff, Eigen::VectorXd dist2ligand);
+	void gen_pocket(bool has_ligand, list<size_t> & pocket, double cutoff, VectorXd dist2ligand);
 
-	void gen_pocket_force(bool & flag, Eigen::VectorXd & pocket_force, std::list<size_t> pocket, Eigen::VectorXd pro_force, Eigen::VectorXd displacement);
+	void gen_pocket_force(bool & flag, VectorXd & pocket_force, list<size_t> pocket, VectorXd pro_force, VectorXd displacement);
 
-	void gen_pocket_force(bool & flag, Eigen::VectorXd & pocket_force, Eigen::VectorXd fixed_force, std::list<size_t> pocket, std::list<size_t> fixed_pocket, Eigen::VectorXd pro_force, Eigen::VectorXd displacement);
+	void gen_pocket_force(bool & flag, VectorXd & pocket_force, VectorXd fixed_force, list<size_t> pocket, list<size_t> fixed_pocket, VectorXd pro_force, VectorXd displacement);
 	
-	void calc_energy_known(bool flag, double & proenergy, double & pocketenergy, double & totenergy, std::list<size_t> pocket, Eigen::VectorXd pro_force, Eigen::MatrixXd distmat);
+	void calc_energy_known(bool flag, double & proenergy, double & pocketenergy, double & totenergy, list<size_t> pocket, VectorXd pro_force, MatrixXd distmat);
 
-	void calc_energy_unknown(bool flag, double & proenergy, double & pocketenergy, double & totenergy, Eigen::VectorXd pocket_force);
+	void calc_energy_unknown(bool flag, double & proenergy, double & pocketenergy, double & totenergy, VectorXd pocket_force);
 
-	void debug_energy_unknown(Eigen::VectorXd pocket_force);
+	void debug_energy_unknown(VectorXd pocket_force);
 		
 	void print_energy_results();
 
@@ -226,9 +228,9 @@ private:
 	Pro ProA;
 	Pro ProAS;
 
-	Eigen::VectorXd S_fitprocoord;
-	Eigen::VectorXd S_dist2ligand;
-	Eigen::VectorXd pocketS_force;
+	VectorXd S_fitprocoord;
+	VectorXd S_dist2ligand;
+	VectorXd pocketS_force;
 	double S_proenergy = 0.0;
 	double S_pocketenergy = 0.0;
 	double S_energy = 0.0;
@@ -236,9 +238,9 @@ private:
 	double S_predict_pocketenergy = 0.0;
 	double S_predict_energy = 0.0;
 
-	Eigen::VectorXd A_fitprocoord;
-	Eigen::VectorXd A_dist2ligand;
-	Eigen::VectorXd pocketA_force;
+	VectorXd A_fitprocoord;
+	VectorXd A_dist2ligand;
+	VectorXd pocketA_force;
 	double A_proenergy = 0.0;
 	double A_pocketenergy = 0.0;
 	double A_energy = 0.0;
@@ -246,9 +248,9 @@ private:
 	double A_predict_pocketenergy = 0.0;
 	double A_predict_energy = 0.0;
 
-	Eigen::VectorXd AS_fitprocoord;
-	Eigen::VectorXd AS_dist2ligand;
-	Eigen::VectorXd pocketAS_force;
+	VectorXd AS_fitprocoord;
+	VectorXd AS_dist2ligand;
+	VectorXd pocketAS_force;
 	double AS_proenergy = 0.0;
 	double AS_pocketenergy = 0.0;
 	double AS_energy = 0.0;
@@ -256,40 +258,40 @@ private:
 	double AS_predict_pocketenergy = 0.0;
 	double AS_predict_energy = 0.0;
 
-	Eigen::MatrixXd hessian;
-	Eigen::MatrixXd covariance;
+	MatrixXd hessian;
+	MatrixXd covariance;
 
 	double ddG = 0.0;
 	double ddG_predict = 0.0;
 
 	bool ES_info = false;
-	Eigen::VectorXd ES_displacement;
-	Eigen::VectorXd ES_force;
+	VectorXd ES_displacement;
+	VectorXd ES_force;
 	double ES_average_force;
 	double ES_rmsd;
 
 	bool EA_info = false;
-	Eigen::VectorXd EA_displacement;
-	Eigen::VectorXd EA_force;
+	VectorXd EA_displacement;
+	VectorXd EA_force;
 	double EA_average_force;
 	double EA_rmsd;
 
 	bool EAS_info = false;
-	Eigen::VectorXd EAS_displacement;
-	Eigen::VectorXd EAS_force;
+	VectorXd EAS_displacement;
+	VectorXd EAS_force;
 	double EAS_average_force;
 	double EAS_rmsd;
 	
-	std::list<size_t> pocketS;
-	std::list<size_t> pocketA;
-	std::list<size_t> pocketAS;
+	list<size_t> pocketS;
+	list<size_t> pocketA;
+	list<size_t> pocketAS;
 
 	bool has_pocketS_force_flag = false;
 	bool has_pocketA_force_flag = false;
 	bool has_pocketAS_force_flag = false;
 
 	// Matrix formats
-	Eigen::IOFormat CleanFmt = Eigen::IOFormat(4, 0, ", ", "\n", "[", "]");
+	IOFormat CleanFmt = IOFormat(4, 0, ", ", "\n", "[", "]");
 
 	// BGD parameters
 	double LEARNING_STEP = 1e-6;

@@ -1,38 +1,38 @@
 #include "read_pdb.h"
 
-std::string sslice(size_t begin, size_t end, std::string in)
+string sslice(size_t begin, size_t end, string in)
 {
-	std::string out = in.substr(begin, end - begin);
+	string out = in.substr(begin, end - begin);
 	trim(out);
 	return out;
 }
 
-size_t read_resid(std::string line)
+size_t read_resid(string line)
 {
 	return lexical_cast<size_t>(sslice(22, 26, line));
 }
 
-std::string read_record(std::string line)
+string read_record(string line)
 {
 	return sslice(0, 6, line);
 }
 
-std::string read_resname(std::string line)
+string read_resname(string line)
 {
 	return sslice(17, 20, line);
 }
 
-std::string read_chain(std::string line)
+string read_chain(string line)
 {
 	return sslice(21, 22, line);
 }
 
-std::string read_atomname(std::string line)
+string read_atomname(string line)
 {
 	return sslice(12, 16, line);
 }
 
-ResInfo read_res(std::string line)
+ResInfo read_res(string line)
 {
 	ResInfo res;
 	res.resname = sslice(17, 20, line);
@@ -45,7 +45,7 @@ ResInfo read_res(std::string line)
 	return res;
 }
 
-AtomInfo read_atom(std::string line)
+AtomInfo read_atom(string line)
 {
 	AtomInfo atom;
 	atom.resid = lexical_cast<size_t>(sslice(6, 11, line));

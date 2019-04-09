@@ -4,30 +4,35 @@
 #include <iomanip>
 #include <list>
 #include <cmath>
-
 #include <Eigen/Dense>
 #include <Eigen/QR>
+#include <boost/format.hpp>
 
-Eigen::VectorXd rotate(Eigen::VectorXd coord, Eigen::Vector3d axis, double angle);
+#include "manageIO.h"
 
-Eigen::VectorXd fitting(Eigen::VectorXd coord1, Eigen::VectorXd coord2);
+using namespace std;
+using namespace Eigen;
 
-Eigen::VectorXd calc_displacement(Eigen::VectorXd coord1, Eigen::VectorXd coord2);
+VectorXd rotate(VectorXd coord, Vector3d axis, double angle);
 
-double calc_rmsd(Eigen::VectorXd coord1, Eigen::VectorXd coord2);
+VectorXd fitting(VectorXd coord1, VectorXd coord2);
 
-double calc_rmsd(Eigen::VectorXd diff);
+VectorXd calc_displacement(VectorXd coord1, VectorXd coord2);
 
-double calc_mindist(Eigen::VectorXd coord1, Eigen::VectorXd coord2);
+double calc_rmsd(VectorXd coord1, VectorXd coord2);
 
-double calc_norm(Eigen::VectorXd vector);
+double calc_rmsd(VectorXd diff);
 
-double calc_average_force(Eigen::VectorXd force);
+double calc_mindist(VectorXd coord1, VectorXd coord2);
 
-Eigen::MatrixXd gen_distmat(Eigen::VectorXd coord);
+double calc_norm(VectorXd vector);
 
-std::list<size_t> gen_pocket(double cutoff, Eigen::VectorXd dist2ligand);
+double calc_average_force(VectorXd force);
 
-void normal_equation(Eigen::VectorXd & coefficient, Eigen::MatrixXd X, Eigen::VectorXd Y);
+MatrixXd gen_distmat(VectorXd coord);
 
-void BGD(Eigen::VectorXd & coeff, Eigen::MatrixXd X, Eigen::MatrixXd Y, double learning_rate, double convergence, size_t iterations);
+std::list<size_t> gen_pocket(double cutoff, VectorXd dist2ligand);
+
+void normal_equation(VectorXd & coefficient, MatrixXd X, VectorXd Y);
+
+void BGD(VectorXd & coeff, MatrixXd X, MatrixXd Y, double learning_rate, double convergence, size_t iterations);

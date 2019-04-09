@@ -3,13 +3,14 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string.hpp>
 
+using namespace std;
 using boost::algorithm::trim;
 using boost::lexical_cast;
 
 struct ResInfo
 {
-	std::string resname;
-	std::string chain;
+	string resname;
+	string chain;
 	size_t resid;
 	double x;
 	double y;
@@ -18,9 +19,9 @@ struct ResInfo
 };
 struct AtomInfo
 {
-	std::string atomname;
-	std::string resname;
-	std::string chain;
+	string atomname;
+	string resname;
+	string chain;
 	size_t atomid;
 	size_t resid;
 	double x;
@@ -29,18 +30,18 @@ struct AtomInfo
 	double bfactor;
 };
 
-std::string sslice(size_t begin, size_t size, std::string in);
+string sslice(size_t begin, size_t size, string in);
 
-size_t read_resid(std::string line);
+size_t read_resid(string line);
 
-std::string read_record(std::string line);
+string read_record(string line);
 
-std::string read_resname(std::string line);
+string read_resname(string line);
 
-std::string read_chain(std::string line);
+string read_chain(string line);
 
-std::string read_atomname(std::string line);
+string read_atomname(string line);
 
-ResInfo read_res(std::string line);
+ResInfo read_res(string line);
 
-AtomInfo read_atom(std::string line);
+AtomInfo read_atom(string line);

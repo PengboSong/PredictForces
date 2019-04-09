@@ -1,98 +1,96 @@
+#include <iostream>
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
+#include "manageIO.h"
 #include "Pro.h"
 #include "ProAnalysis.h"
 
-using boost::algorithm::trim;
+using namespace std;
+using namespace boost::algorithm;
+using boost::filesystem::path;
 
-std::list<double> cutoff_pocket = { 2.5, 3.0, 3.5, 4.0, 4.5, 5.0 };
+list<double> cutoff_pocket = { 2.5, 3.0, 3.5, 4.0, 4.5, 5.0 };
 
-std::vector<std::string> get_exclude_res()
+vector<string> get_exclude_res()
 {
-	std::string exclbuf = "";
-	std::cout << "Enter residues to be excluded: ";
-	std::getline(std::cin, exclbuf);
+	string exclbuf = "";
+	cout << "Enter residues to be excluded: ";
+	getline(cin, exclbuf);
 	trim(exclbuf);
-	std::vector<std::string> excl = {};
+	vector<string> excl = {};
 	boost::split(excl, exclbuf, boost::is_any_of("\t, "));
 	return excl;
 }
 
 int main()
 {
-	boost::filesystem::path datasetpath = "", proname = "";
-	std::cout << "Enter dataset path: ";
-	std::cin >> datasetpath;
-	std::cout << "Enter protein family name: ";
-	std::cin >> proname;
+	path datasetpath = "", proname = "";
+	cout << "Enter dataset path: ";
+	cin >> datasetpath;
+	cout << "Enter protein family name: ";
+	cin >> proname;
 
-	boost::filesystem::path datadir = datasetpath / proname;
+	path datadir = datasetpath / proname;
 	if (!boost::filesystem::is_directory(datadir))
-	{
-		std::cout << "[Error] Can not find directory " << datadir << std::endl;
-		exit(1);
-	}
+		handle_error("Can not find directory " + datadir.string());
 
 	Pro Apo;
 	Pro Binding;
 	Pro Allostery;
 	Pro Complex;
 
-	std::cin.get();
-	std::string aponame = "", bindingname = "", allosteryname = "", complexname = "";
-	std::cout << "Enter PDB name for apo state:";
-	std::getline(std::cin, aponame);
+	cin.get();
+	string aponame = "", bindingname = "", allosteryname = "", complexname = "";
+	cout << "Enter PDB name for apo state:";
+	getline(cin, aponame);
 	trim(aponame);
 
 	if (aponame.empty())
-	{
-		std::cout << "[Error] Apo state must be loaded." << std::endl;
-		exit(1);
-	}
+		handle_error("Apo state must be loaded.");
 	else
 	{
-		if (!boost::algorithm::ends_with(aponame, ".pdb"))
+		if (!ends_with(aponame, ".pdb"))
 			aponame += ".pdb";
-		boost::filesystem::path apopath = datadir / aponame;
-		std::vector<std::string> apoexcl = get_exclude_res();
+		path apopath = datadir / aponame;
+		vector<string> apoexcl = get_exclude_res();
 		Apo = Pro(apopath.string(), false, apoexcl);
 	}
 
-	std::cout << "Enter PDB name for binding state:";
-	std::getline(std::cin, bindingname);
+	cout << "Enter PDB name for binding state:";
+	getline(cin, bindingname);
 	trim(bindingname);
 	if (!bindingname.empty())
 	{
 		if (!boost::algorithm::ends_with(bindingname, ".pdb"))
 			bindingname += ".pdb";
-		boost::filesystem::path bindingpath = datadir / bindingname;
-		std::vector<std::string> bindingexcl = get_exclude_res();
+		path bindingpath = datadir / bindingname;
+		vector<string> bindingexcl = get_exclude_res();
 		Binding = Pro(bindingpath.string(), true, bindingexcl);
 	}
 
-	std::cout << "Enter PDB name for allostery state:";
-	std::getline(std::cin, allosteryname);
+	cout << "Enter PDB name for allostery state:";
+	getline(cin, allosteryname);
 	trim(allosteryname);
 	if (!allosteryname.empty())
 	{
 		if (!boost::algorithm::ends_with(allosteryname, ".pdb"))
 			allosteryname += ".pdb";
-		boost::filesystem::path allosterypath = datadir / allosteryname;
-		std::vector<std::string> allosteryexcl = get_exclude_res();
+		path allosterypath = datadir / allosteryname;
+		vector<string> allosteryexcl = get_exclude_res();
 		Allostery = Pro(allosterypath.string(), true, allosteryexcl);
 	}
 
-	std::cout << "Enter PDB name for complex state:";
-	std::getline(std::cin, complexname);
+	cout << "Enter PDB name for complex state:";
+	getline(cin, complexname);
 	trim(complexname);
 	if (!complexname.empty())
 	{
 		if (!boost::algorithm::ends_with(complexname, ".pdb"))
 			complexname += ".pdb";
-		boost::filesystem::path complexpath = datadir / complexname;
-		std::vector<std::string> complexexcl = get_exclude_res();
+		path complexpath = datadir / complexname;
+		vector<string> complexexcl = get_exclude_res();
 		Complex = Pro(complexpath.string(), true, complexexcl);
 	}
 

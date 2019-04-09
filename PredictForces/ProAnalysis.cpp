@@ -13,9 +13,9 @@ ProAnalysis::ProAnalysis(Pro apo, Pro binding)
 	if (!ProE.empty())
 	{
 		hessian = ProE.gen_hessian(); // unit: J / mol
-		std::cout << "[Info] Finish constructing Hessian matrix." << std::endl;
+		cout << "[Info] Finish constructing Hessian matrix." << endl;
 		covariance = ProE.gen_covariance(hessian); // unit: A^2 / mol
-		std::cout << "[Info] Finish constructing Covariance matrix." << std::endl;
+		cout << "[Info] Finish constructing Covariance matrix." << endl;
 
 		if (!ProS.empty())
 		{
@@ -42,9 +42,9 @@ ProAnalysis::ProAnalysis(Pro apo, Pro binding, Pro allostery, Pro complex)
 	if (!ProE.empty())
 	{
 		hessian = ProE.gen_hessian(); // unit: J / mol
-		std::cout << "[Info] Finish constructing Hessian matrix." << std::endl;
+		cout << "[Info] Finish constructing Hessian matrix." << endl;
 		covariance = ProE.gen_covariance(hessian); // unit: A^2 / mol
-		std::cout << "[Info] Finish constructing Covariance matrix." << std::endl;
+		cout << "[Info] Finish constructing Covariance matrix." << endl;
 
 		if (!ProS.empty())
 		{
@@ -89,15 +89,15 @@ ProAnalysis::~ProAnalysis()
 {
 }
 
-void ProAnalysis::interactive_pocket(std::string mode)
+void ProAnalysis::interactive_pocket(string mode)
 {
-	std::string cmd;
-	std::string para;
+	string cmd;
+	string para;
 
 	while (true)
 	{
-		std::cout << '[' << mode << ']' << " >>> ";
-		std::getline(std::cin, cmd);
+		cout << '[' << mode << ']' << " >>> ";
+		getline(cin, cmd);
 		trim(cmd);
 		if (cmd == "back")
 			break;
@@ -118,10 +118,10 @@ void ProAnalysis::interactive_pocket(std::string mode)
 						add_to_pocketAS(resid);
 				}
 				else
-					std::cout << "[Info] Input residue ID out of range. Please enter again." << std::endl;
+					cout << "[Info] Input residue ID out of range. Please enter again." << endl;
 			}
 			else
-				std::cout << "No residue ID given. Please enter again." << std::endl;
+				cout << "No residue ID given. Please enter again." << endl;
 			
 		}
 		else if (cmd.substr(0, 3) == "del")
@@ -141,10 +141,10 @@ void ProAnalysis::interactive_pocket(std::string mode)
 						remove_from_pocketAS(resid);
 				}
 				else
-					std::cout << "[Info] Input residue ID out of range. Please enter again." << std::endl;
+					cout << "[Info] Input residue ID out of range. Please enter again." << endl;
 			}
 			else
-				std::cout << "No residue ID given. Please enter again." << std::endl;			
+				cout << "No residue ID given. Please enter again." << endl;			
 		}
 		else if (cmd.substr(0, 10) == "gen-pocket")
 		{
@@ -161,7 +161,7 @@ void ProAnalysis::interactive_pocket(std::string mode)
 					gen_pocketAS(cutoff);
 			}
 			else
-				std::cout << "No cutoff length given. Please enter again." << std::endl;
+				cout << "No cutoff length given. Please enter again." << endl;
 		}
 		else if (cmd == "show")
 		{
@@ -217,19 +217,20 @@ void ProAnalysis::interactive_pocket(std::string mode)
 			else if (mode == "AS")
 				show_proAS_all_force();
 		}
-
+		else
+			cout << "[Info] Unknown command." << endl;
 		cmd.clear();
 	}
 }
 
 void ProAnalysis::interactive()
 {
-	std::string cmd;
-	std::string para;
+	string cmd;
+	string para;
 	while (true)
 	{
-		std::cout << ">>> ";
-		std::getline(std::cin, cmd);
+		cout << ">>> ";
+		getline(cin, cmd);
 		trim(cmd);
 		if (cmd == "exit")
 			break;
@@ -241,22 +242,23 @@ void ProAnalysis::interactive()
 			interactive_pocket("AS");
 		else if (cmd == "energy")
 			gen_free_energy();
-
+		else
+			cout << "[Info] Unknown command." << endl;
 		cmd.clear();
 	}
 }
 
-Eigen::MatrixXd ProAnalysis::get_hessian()
+MatrixXd ProAnalysis::get_hessian()
 {
 	return hessian;
 }
 
-Eigen::Matrix3d ProAnalysis::get_hessian(size_t i, size_t j)
+Matrix3d ProAnalysis::get_hessian(size_t i, size_t j)
 {
 	if (i < size_t(hessian.rows() / 3) && j < size_t(hessian.cols() / 3))
-		return Eigen::Matrix3d(hessian.block(3 * i, 3 * j, 3, 3));
+		return Matrix3d(hessian.block(3 * i, 3 * j, 3, 3));
 	else
-		return Eigen::Matrix3d();
+		return Matrix3d();
 }
 
 double ProAnalysis::get_hessian_s(size_t si, size_t sj)
@@ -267,28 +269,28 @@ double ProAnalysis::get_hessian_s(size_t si, size_t sj)
 		return 0.0;
 }
 
-void ProAnalysis::write_hessian(std::string writepath)
+void ProAnalysis::write_hessian(string writepath)
 {
-	std::ofstream hessianf(writepath);
+	ofstream hessianf(writepath);
 	if (hessianf.is_open())
 	{
 		hessianf << hessian.format(CleanFmt);
 		hessianf.close();
-		std::cout << "[Info] Hessian matrix has been written to " << writepath << ". " << std::endl;
+		cout << "[Info] Hessian matrix has been written to " << writepath << ". " << endl;
 	}
 }
 
-Eigen::MatrixXd ProAnalysis::get_covariance()
+MatrixXd ProAnalysis::get_covariance()
 {
 	return covariance;
 }
 
-Eigen::Matrix3d ProAnalysis::get_covariance(size_t i, size_t j)
+Matrix3d ProAnalysis::get_covariance(size_t i, size_t j)
 {
 	if (i < size_t(covariance.rows() / 3) && j < size_t(covariance.cols() / 3))
-		return Eigen::Matrix3d(covariance.block(3 * i, 3 * j, 3, 3));
+		return Matrix3d(covariance.block(3 * i, 3 * j, 3, 3));
 	else
-		return Eigen::Matrix3d();
+		return Matrix3d();
 }
 
 double ProAnalysis::get_covariance_s(size_t si, size_t sj)
@@ -299,14 +301,14 @@ double ProAnalysis::get_covariance_s(size_t si, size_t sj)
 		return 0.0;
 }
 
-void ProAnalysis::write_covariance(std::string writepath)
+void ProAnalysis::write_covariance(string writepath)
 {
-	std::ofstream covariancef(writepath);
+	ofstream covariancef(writepath);
 	if (covariancef.is_open())
 	{
 		covariancef << covariance.format(CleanFmt);
 		covariancef.close();
-		std::cout << "[Info] Covariance matrix has been written to " << writepath << ". " << std::endl;
+		cout << "[Info] Covariance matrix has been written to " << writepath << ". " << endl;
 	}
 }
 
@@ -343,8 +345,8 @@ void ProAnalysis::gen_free_energy()
 		calc_energy_known(has_pocketAS_force_flag, AS_proenergy, AS_pocketenergy, AS_energy, pocketAS, EAS_force, ProAS.get_distmat());
 		calc_energy_unknown(has_pocketAS_force_flag, AS_predict_proenergy, AS_predict_pocketenergy, AS_predict_energy, pocketAS_force);
 
-		pocketA_force = Eigen::VectorXd::Zero(pocketAS_force.size());
-		for (std::list<size_t>::iterator it = pocketAS.begin(); it != pocketAS.end(); ++it)
+		pocketA_force = VectorXd::Zero(pocketAS_force.size());
+		for (list<size_t>::iterator it = pocketAS.begin(); it != pocketAS.end(); ++it)
 		{
 			if (!in_pocketS(*it))
 			{
@@ -375,8 +377,8 @@ void ProAnalysis::gen_free_energy()
 		calc_energy_known(has_pocketAS_force_flag, AS_proenergy, AS_pocketenergy, AS_energy, pocketAS, EAS_force, ProAS.get_distmat());
 		calc_energy_unknown(has_pocketAS_force_flag, AS_predict_proenergy, AS_predict_pocketenergy, AS_predict_energy, pocketAS_force);
 
-		pocketS_force = Eigen::VectorXd::Zero(pocketAS_force.size());
-		for (std::list<size_t>::iterator it = pocketAS.begin(); it != pocketAS.end(); ++it)
+		pocketS_force = VectorXd::Zero(pocketAS_force.size());
+		for (list<size_t>::iterator it = pocketAS.begin(); it != pocketAS.end(); ++it)
 		{
 			if (!in_pocketA(*it))
 			{
@@ -398,35 +400,35 @@ void ProAnalysis::gen_free_energy()
 		print_energy_results();
 	}
 	else
-		std::cout << "[Error] Lack necessary protein information." << std::endl;
+		cout << "[Error] Lack necessary protein information." << endl;
 }
 
-double ProAnalysis::calc_model_rmsd(bool flag, Eigen::VectorXd pocket_force, Eigen::VectorXd refcoord)
+double ProAnalysis::calc_model_rmsd(bool flag, VectorXd pocket_force, VectorXd refcoord)
 {
 	if (flag)
 	{
-		Eigen::VectorXd mprocoord = covariance * pocket_force + ProE.get_procoord();
-		Eigen::VectorXd fitmprocoord = fitting(refcoord, mprocoord);
+		VectorXd mprocoord = covariance * pocket_force + ProE.get_procoord();
+		VectorXd fitmprocoord = fitting(refcoord, mprocoord);
 		return calc_rmsd(refcoord, fitmprocoord);
 	}
 	else
 	{
-		std::cout << "[Error] Can not calculate model RMSD without pocket force generated. Call \"gen_pocket*_force\" function first." << std::endl;
+		cout << "[Error] Can not calculate model RMSD without pocket force generated. Call \"gen_pocket*_force\" function first." << endl;
 		return 0.0;
 	}
 }
 
-void ProAnalysis::show_pocket(std::list<size_t> pocket)
+void ProAnalysis::show_pocket(list<size_t> pocket)
 {
-	std::cout << "[Result] Pocket residues: ";
-	for (std::list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
+	cout << "[Result] Pocket residues: ";
+	for (list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
 	{
-		std::cout << *it + 1 << " ";
+		cout << *it + 1 << " ";
 	}
-	std::cout << std::endl;
+	cout << endl;
 }
 
-void ProAnalysis::test_pocket(bool flag, bool info, std::list<size_t> pocket, Eigen::VectorXd pocket_force, Eigen::VectorXd refcoord)
+void ProAnalysis::test_pocket(bool flag, bool info, list<size_t> pocket, VectorXd pocket_force, VectorXd refcoord)
 {
 	if (!pocket.empty() && flag)
 	{
@@ -434,103 +436,103 @@ void ProAnalysis::test_pocket(bool flag, bool info, std::list<size_t> pocket, Ei
 
 		if (info)
 		{
-			std::cout << std::fixed << std::setprecision(4);
-			std::cout << "[Result] RMSD between real structure and structure calculated according to current pocket: " << calc_model_rmsd(flag, pocket_force, refcoord) << " A." << std::endl;
+			cout << fixed << setprecision(4);
+			cout << "[Result] RMSD between real structure and structure calculated according to current pocket: " << calc_model_rmsd(flag, pocket_force, refcoord) << " A." << endl;
 		}
 		else
-			std::cout << "[Error] Lack necessary protein information." << std::endl;
+			cout << "[Error] Lack necessary protein information." << endl;
 	}
 	else
-		std::cout << "[Error] The binding pocket domain is not specificed." << std::endl;
+		cout << "[Error] The binding pocket domain is not specificed." << endl;
 }
 
-void ProAnalysis::show_pocket_force(bool flag, std::list<size_t> pocket, Eigen::VectorXd pocket_force)
+void ProAnalysis::show_pocket_force(bool flag, list<size_t> pocket, VectorXd pocket_force)
 {
 	if (flag)
 	{
-		std::cout << "[Result] Pocket force:" << std::endl;
-		for (std::list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
+		cout << "[Result] Pocket force:" << endl;
+		for (list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
 		{
-			Eigen::Vector3d resforce = Eigen::Vector3d::Zero();
+			Vector3d resforce = Vector3d::Zero();
 			resforce << pocket_force(*it * 3), pocket_force(*it * 3 + 1), pocket_force(*it * 3 + 2);
-			std::cout << "RES " << *it + 1 << " FORCE " << calc_norm(resforce) << std::endl;
+			cout << "RES " << *it + 1 << " FORCE " << calc_norm(resforce) << endl;
 		}
 	}
 	else
-		std::cout << "[Error] The binding pocket domain is not specificed." << std::endl;
+		cout << "[Error] The binding pocket domain is not specificed." << endl;
 }
 
-void ProAnalysis::show_pro_pocket_force(std::list<size_t> pocket, Eigen::VectorXd pro_force)
+void ProAnalysis::show_pro_pocket_force(list<size_t> pocket, VectorXd pro_force)
 {
-	std::cout << "[Result] Pocket force (from protein):" << std::endl;
-	for (std::list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
+	cout << "[Result] Pocket force (from protein):" << endl;
+	for (list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
 	{
-		Eigen::Vector3d resforce = Eigen::Vector3d::Zero();
+		Vector3d resforce = Vector3d::Zero();
 		resforce << pro_force(*it * 3), pro_force(*it * 3 + 1), pro_force(*it * 3 + 2);
-		std::cout << "RES " << *it + 1 << " FORCE " << calc_norm(resforce) << std::endl;
+		cout << "RES " << *it + 1 << " FORCE " << calc_norm(resforce) << endl;
 	}
 }
 
-void ProAnalysis::show_pro_all_force(Eigen::VectorXd pro_force)
+void ProAnalysis::show_pro_all_force(VectorXd pro_force)
 {
-	std::cout << "[Result] Pro force:" << std::endl;
-	std::vector<std::pair<size_t, double>> forces;
+	cout << "[Result] Pro force:" << endl;
+	vector<pair<size_t, double>> forces;
 	for (size_t i = 0; i < ProE.get_resn(); ++i)
 	{
-		Eigen::Vector3d resforce = Eigen::Vector3d::Zero();
+		Vector3d resforce = Vector3d::Zero();
 		resforce << pro_force(i * 3), pro_force(i * 3 + 1), pro_force(i * 3 + 2);
-		forces.push_back(std::make_pair(i, calc_norm(resforce)));
+		forces.push_back(make_pair(i, calc_norm(resforce)));
 	}
-	std::sort(forces.begin(), forces.end(), [](std::pair<size_t, double> a, std::pair<size_t, double> b) {
+	sort(forces.begin(), forces.end(), [](pair<size_t, double> a, pair<size_t, double> b) {
 		return a.second > b.second;
 	});
 
 	for (size_t i = 0; i < ProE.get_resn(); ++i)
 	{
-		std::cout << i << " RES " << forces[i].first + 1 << " FORCE " << forces[i].second << std::endl;
+		cout << i << " RES " << forces[i].first + 1 << " FORCE " << forces[i].second << endl;
 	}
 }
 
-bool ProAnalysis::in_pocket(std::list<size_t> pocket, size_t id)
+bool ProAnalysis::in_pocket(list<size_t> pocket, size_t id)
 {
 	bool find_element_flag = false;
-	for (std::list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
+	for (list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
 		if (*it == id)
 			find_element_flag = true;
 	return find_element_flag;
 }
 
-void ProAnalysis::add_to_pocket(std::list<size_t> pocket, size_t id)
+void ProAnalysis::add_to_pocket(list<size_t> pocket, size_t id)
 {
 	if (id < ProE.get_resn())
 	{
 		if (in_pocket(pocket, id))
-			std::cout << "[Info] Given residue ID already in pocket." << std::endl;
+			cout << "[Info] Given residue ID already in pocket." << endl;
 		else
 			pocket.push_back(id);
 	}
 	else
-		std::cout << "[Error] Given residue ID out of range." << std::endl;
+		cout << "[Error] Given residue ID out of range." << endl;
 }
 
-void ProAnalysis::remove_from_pocket(std::list<size_t> pocket, size_t id)
+void ProAnalysis::remove_from_pocket(list<size_t> pocket, size_t id)
 {
 	if (id < ProE.get_resn())
 	{
 		if (in_pocket(pocket, id))
 		{
-			for (std::list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
+			for (list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
 				if (*it == id)
 					pocket.erase(it);
 		}
 		else
-			std::cout << "[Info] Given residue ID not in pocket. Can not erase it." << std::endl;
+			cout << "[Info] Given residue ID not in pocket. Can not erase it." << endl;
 	}
 	else
-		std::cout << "[Error] Given residue ID out of range." << std::endl;
+		cout << "[Error] Given residue ID out of range." << endl;
 }
 
-void ProAnalysis::gen_pocket(bool has_ligand, std::list<size_t> &pocket, double cutoff, Eigen::VectorXd dist2ligand)
+void ProAnalysis::gen_pocket(bool has_ligand, list<size_t> &pocket, double cutoff, VectorXd dist2ligand)
 {
 	if (has_ligand)
 	{
@@ -544,25 +546,25 @@ void ProAnalysis::gen_pocket(bool has_ligand, std::list<size_t> &pocket, double 
 		}
 		else
 		{
-			std::cout << std::fixed << std::setprecision(2);
-			std::cout << "[Error] Given cutoff is too short. Minimum possible cutoff is " << dist2ligand.minCoeff() << "." << std::endl;
+			cout << fixed << setprecision(2);
+			cout << "[Error] Given cutoff is too short. Minimum possible cutoff is " << dist2ligand.minCoeff() << "." << endl;
 		}
 	}
 	else
-		std::cout << "[Error] Can not find ligand information." << std::endl;
+		cout << "[Error] Can not find ligand information." << endl;
 }
 
-void ProAnalysis::gen_pocket_force(bool & flag, Eigen::VectorXd &pocket_force, std::list<size_t> pocket, Eigen::VectorXd pro_force, Eigen::VectorXd displacement)
+void ProAnalysis::gen_pocket_force(bool & flag, VectorXd &pocket_force, list<size_t> pocket, VectorXd pro_force, VectorXd displacement)
 {
-	pocket_force = Eigen::VectorXd::Zero(covariance.rows());
+	pocket_force = VectorXd::Zero(covariance.rows());
 
 	size_t ndim = pocket.size() * 3;
-	Eigen::MatrixXd X = Eigen::MatrixXd::Zero(covariance.rows(), ndim);
-	Eigen::VectorXd Y = displacement;
-	Eigen::VectorXd coeff = Eigen::VectorXd::Zero(ndim);
+	MatrixXd X = MatrixXd::Zero(covariance.rows(), ndim);
+	VectorXd Y = displacement;
+	VectorXd coeff = VectorXd::Zero(ndim);
 
 	size_t i = 0;
-	for (std::list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
+	for (list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
 	{
 		X.col(3 * i) = covariance.col(*it * 3);
 		X.col(3 * i + 1) = covariance.col(*it * 3 + 1);
@@ -576,16 +578,16 @@ void ProAnalysis::gen_pocket_force(bool & flag, Eigen::VectorXd &pocket_force, s
 	}
 
 	/*
-	std::cout << std::resetiosflags(std::ios::fixed);
-	std::cout << "Using learning step " << LEARNING_STEP << "." << std::endl;
-	std::cout << "Using convergence " << CONVERGENCE << "." << std::endl;
-	std::cout << std::setiosflags(std::ios::fixed);
+	cout << resetiosflags(ios::fixed);
+	cout << "Using learning step " << LEARNING_STEP << "." << endl;
+	cout << "Using convergence " << CONVERGENCE << "." << endl;
+	cout << setiosflags(ios::fixed);
 	BGD(coeff, X, Y, LEARNING_STEP, CONVERGENCE, ITERATION_TIMES);
 	*/
 	normal_equation(coeff, X, Y);
 
 	i = 0;
-	for (std::list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
+	for (list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
 	{
 		pocket_force(*it * 3) = coeff(i * 3);
 		pocket_force(*it * 3 + 1) = coeff(i * 3 + 1);
@@ -594,11 +596,11 @@ void ProAnalysis::gen_pocket_force(bool & flag, Eigen::VectorXd &pocket_force, s
 	flag = true;
 }
 
-void ProAnalysis::gen_pocket_force(bool & flag, Eigen::VectorXd & pocket_force, Eigen::VectorXd fixed_force, std::list<size_t> pocket, std::list<size_t> fixed_pocket, Eigen::VectorXd pro_force, Eigen::VectorXd displacement)
+void ProAnalysis::gen_pocket_force(bool & flag, VectorXd & pocket_force, VectorXd fixed_force, list<size_t> pocket, list<size_t> fixed_pocket, VectorXd pro_force, VectorXd displacement)
 {
-	Eigen::VectorXd equiv_displacement = displacement - covariance * fixed_force;
-	std::list<size_t> unfixed_pocket;
-	for (std::list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
+	VectorXd equiv_displacement = displacement - covariance * fixed_force;
+	list<size_t> unfixed_pocket;
+	for (list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
 		if (!in_pocket(fixed_pocket, *it))
 			unfixed_pocket.push_back(*it);
 	gen_pocket_force(flag, pocket_force, unfixed_pocket, pro_force, equiv_displacement);
@@ -606,83 +608,83 @@ void ProAnalysis::gen_pocket_force(bool & flag, Eigen::VectorXd & pocket_force, 
 	flag = true;
 }
 
-void ProAnalysis::calc_energy_known(bool flag, double &proenergy, double &pocketenergy, double &totenergy, std::list<size_t> pocket, Eigen::VectorXd pro_force, Eigen::MatrixXd distmat)
+void ProAnalysis::calc_energy_known(bool flag, double &proenergy, double &pocketenergy, double &totenergy, list<size_t> pocket, VectorXd pro_force, MatrixXd distmat)
 {
 	if (flag)
 	{
-		Eigen::VectorXd force = Eigen::VectorXd::Zero(pro_force.rows());
-		for (std::list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
+		VectorXd force = VectorXd::Zero(pro_force.rows());
+		for (list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
 		{
 			force(*it * 3) = pro_force(*it * 3);
 			force(*it * 3 + 1) = pro_force(*it * 3 + 1);
 			force(*it * 3 + 2) = pro_force(*it * 3 + 2);
 		}
-		Eigen::ArrayXXd distdiffmat = distmat - ProE.get_distmat();
+		ArrayXXd distdiffmat = distmat - ProE.get_distmat();
 		proenergy = (distdiffmat.pow(2) * ProE.get_kmat()).sum();
 		pocketenergy = -force.transpose() * covariance * force;
 		totenergy = proenergy + pocketenergy;
 	}
 	else
-		std::cout << "[Error] Can not calculate energy without pocket force generated. Call \"gen_pocket*_force\" function first." << std::endl;
+		cout << "[Error] Can not calculate energy without pocket force generated. Call \"gen_pocket*_force\" function first." << endl;
 }
 
-void ProAnalysis::calc_energy_unknown(bool flag, double &proenergy, double &pocketenergy, double &totenergy, Eigen::VectorXd pocket_force)
+void ProAnalysis::calc_energy_unknown(bool flag, double &proenergy, double &pocketenergy, double &totenergy, VectorXd pocket_force)
 {
 	if (flag)
 	{
-		Eigen::VectorXd procoord = covariance * pocket_force + ProE.get_procoord();
-		Eigen::ArrayXXd distdiffmat = gen_distmat(procoord) - ProE.get_distmat();
+		VectorXd procoord = covariance * pocket_force + ProE.get_procoord();
+		ArrayXXd distdiffmat = gen_distmat(procoord) - ProE.get_distmat();
 		proenergy = (distdiffmat.pow(2) * ProE.get_kmat()).sum();
 		pocketenergy = -pocket_force.transpose() * covariance * pocket_force;
 		totenergy = proenergy + pocketenergy;
 	}
 	else
-		std::cout << "[Error] Can not calculate energy without pocket force generated. Call \"gen_pocket*_force\" function first." << std::endl;
+		cout << "[Error] Can not calculate energy without pocket force generated. Call \"gen_pocket*_force\" function first." << endl;
 }
 
-void ProAnalysis::debug_energy_unknown(Eigen::VectorXd pocket_force)
+void ProAnalysis::debug_energy_unknown(VectorXd pocket_force)
 {
-	Eigen::VectorXd procoord = covariance * pocket_force + ProE.get_procoord();
-	Eigen::ArrayXXd distdiffmat = gen_distmat(procoord) - ProE.get_distmat();
+	VectorXd procoord = covariance * pocket_force + ProE.get_procoord();
+	ArrayXXd distdiffmat = gen_distmat(procoord) - ProE.get_distmat();
 	double proenergy = (distdiffmat.pow(2) * ProE.get_kmat()).sum();
 	double pocketenergy = -pocket_force.transpose() * covariance * pocket_force;
 	double totenergy = proenergy + pocketenergy;
 
-	std::cout << "---< DEBUG >---" << std::endl;
-	std::cout << std::fixed << std::setprecision(4);
-	std::cout << "Total: " << totenergy * 1e-3 << std::endl;
-	std::cout << "Pro: " << proenergy * 1e-3 << " kJ/mol." << std::endl;
-	std::cout << "Pocket: " << proenergy * 1e-3 << " kJ/mol." << std::endl;
-	std::cout << "---< END >---" << std::endl;
+	cout << "---< DEBUG >---" << endl;
+	cout << fixed << setprecision(4);
+	cout << "Total: " << totenergy * 1e-3 << endl;
+	cout << "Pro: " << proenergy * 1e-3 << " kJ/mol." << endl;
+	cout << "Pocket: " << proenergy * 1e-3 << " kJ/mol." << endl;
+	cout << "---< END >---" << endl;
 }
 
 void ProAnalysis::print_energy_results()
 {
-	std::cout << "[Result] Free energy results: " << std::endl;
-	std::cout << std::fixed << std::setprecision(4);
-	std::cout << "Free energy for binding state structure S: " << S_energy * 1e-3 << " kJ/mol." << std::endl;
-	std::cout << "Pro: " << S_proenergy * 1e-3 << " kJ/mol." << std::endl;
-	std::cout << "Pocket: " << S_pocketenergy * 1e-3 << " kJ/mol." << std::endl;
-	std::cout << "Free energy for allostery state structure A: " << A_energy * 1e-3 << " kJ/mol." << std::endl;
-	std::cout << "Pro: " << A_proenergy * 1e-3 << " kJ/mol." << std::endl;
-	std::cout << "Pocket: " << A_pocketenergy * 1e-3 << " kJ/mol." << std::endl;
-	std::cout << "Free energy for complex structure AS: " << AS_energy * 1e-3 << " kJ/mol." << std::endl;
-	std::cout << "Pro: " << AS_proenergy * 1e-3 << " kJ/mol." << std::endl;
-	std::cout << "Pocket: " << AS_pocketenergy * 1e-3 << " kJ/mol." << std::endl;
-	std::cout << "Change of free energy: " << ddG * 1e-3 << " kJ/mol." << std::endl;
+	cout << "[Result] Free energy results: " << endl;
+	cout << fixed << setprecision(4);
+	cout << "Free energy for binding state structure S: " << S_energy * 1e-3 << " kJ/mol." << endl;
+	cout << "Pro: " << S_proenergy * 1e-3 << " kJ/mol." << endl;
+	cout << "Pocket: " << S_pocketenergy * 1e-3 << " kJ/mol." << endl;
+	cout << "Free energy for allostery state structure A: " << A_energy * 1e-3 << " kJ/mol." << endl;
+	cout << "Pro: " << A_proenergy * 1e-3 << " kJ/mol." << endl;
+	cout << "Pocket: " << A_pocketenergy * 1e-3 << " kJ/mol." << endl;
+	cout << "Free energy for complex structure AS: " << AS_energy * 1e-3 << " kJ/mol." << endl;
+	cout << "Pro: " << AS_proenergy * 1e-3 << " kJ/mol." << endl;
+	cout << "Pocket: " << AS_pocketenergy * 1e-3 << " kJ/mol." << endl;
+	cout << "Change of free energy: " << ddG * 1e-3 << " kJ/mol." << endl;
 
-	std::cout << "[Result] Free energy all predict results: " << std::endl;
-	std::cout << std::fixed << std::setprecision(4);
-	std::cout << "Free energy for binding state structure S: " << S_predict_energy * 1e-3 << " kJ/mol." << std::endl;
-	std::cout << "Pro: " << S_predict_proenergy * 1e-3 << " kJ/mol." << std::endl;
-	std::cout << "Pocket: " << S_predict_pocketenergy * 1e-3 << " kJ/mol." << std::endl;
-	std::cout << "Free energy for allostery state structure A: " << A_predict_energy * 1e-3 << " kJ/mol." << std::endl;
-	std::cout << "Pro: " << A_predict_proenergy * 1e-3 << " kJ/mol." << std::endl;
-	std::cout << "Pocket: " << A_predict_pocketenergy * 1e-3 << " kJ/mol." << std::endl;
-	std::cout << "Free energy for complex structure AS: " << AS_predict_energy * 1e-3 << " kJ/mol." << std::endl;
-	std::cout << "Pro: " << AS_predict_proenergy * 1e-3 << " kJ/mol." << std::endl;
-	std::cout << "Pocket: " << AS_predict_pocketenergy * 1e-3 << " kJ/mol." << std::endl;
-	std::cout << "Change of free energy: " << ddG_predict * 1e-3 << " kJ/mol." << std::endl;
+	cout << "[Result] Free energy all predict results: " << endl;
+	cout << fixed << setprecision(4);
+	cout << "Free energy for binding state structure S: " << S_predict_energy * 1e-3 << " kJ/mol." << endl;
+	cout << "Pro: " << S_predict_proenergy * 1e-3 << " kJ/mol." << endl;
+	cout << "Pocket: " << S_predict_pocketenergy * 1e-3 << " kJ/mol." << endl;
+	cout << "Free energy for allostery state structure A: " << A_predict_energy * 1e-3 << " kJ/mol." << endl;
+	cout << "Pro: " << A_predict_proenergy * 1e-3 << " kJ/mol." << endl;
+	cout << "Pocket: " << A_predict_pocketenergy * 1e-3 << " kJ/mol." << endl;
+	cout << "Free energy for complex structure AS: " << AS_predict_energy * 1e-3 << " kJ/mol." << endl;
+	cout << "Pro: " << AS_predict_proenergy * 1e-3 << " kJ/mol." << endl;
+	cout << "Pocket: " << AS_predict_pocketenergy * 1e-3 << " kJ/mol." << endl;
+	cout << "Change of free energy: " << ddG_predict * 1e-3 << " kJ/mol." << endl;
 
 }
 
