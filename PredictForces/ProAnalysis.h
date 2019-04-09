@@ -2,6 +2,7 @@
 #include <iomanip>
 #include <algorithm>
 #include <list>
+#include <utility>
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
 
@@ -70,13 +71,33 @@ public:
 	}
 
 	void show_pocketS_force() {
-		show_pocket_force(pocketS, pocketS_force);
+		show_pocket_force(has_pocketS_force_flag, pocketS, pocketS_force);
 	}
 	void show_pocketA_force() {
-		show_pocket_force(pocketA, pocketA_force);
+		show_pocket_force(has_pocketA_force_flag, pocketA, pocketA_force);
 	}
 	void show_pocketAS_force() {
-		show_pocket_force(pocketAS, pocketAS_force);
+		show_pocket_force(has_pocketAS_force_flag, pocketAS, pocketAS_force);
+	}
+
+	void show_pro_pocketS_force() {
+		show_pro_pocket_force(pocketS, ES_force);
+	}
+	void show_pro_pocketA_force() {
+		show_pro_pocket_force(pocketA, EA_force);
+	}
+	void show_pro_pocketAS_force() {
+		show_pro_pocket_force(pocketAS, EAS_force);
+	}
+
+	void show_proS_all_force() {
+		show_pro_all_force(ES_force);
+	}
+	void show_proA_all_force() {
+		show_pro_all_force(EA_force);
+	}
+	void show_proAS_all_force() {
+		show_pro_all_force(EAS_force);
 	}
 
 	void test_pocketS() {
@@ -174,7 +195,11 @@ private:
 
 	void test_pocket(bool flag, bool info, std::list<size_t> pocket, Eigen::VectorXd pocket_force, Eigen::VectorXd refcoord);
 
-	void show_pocket_force(std::list<size_t> pocket, Eigen::VectorXd pocket_force);
+	void show_pocket_force(bool flag, std::list<size_t> pocket, Eigen::VectorXd pocket_force);
+
+	void show_pro_pocket_force(std::list<size_t> pocket, Eigen::VectorXd pro_force);
+
+	void show_pro_all_force(Eigen::VectorXd pro_force);
 
 	bool in_pocket(std::list<size_t> pocket, size_t id);
 
@@ -188,7 +213,7 @@ private:
 
 	void gen_pocket_force(bool & flag, Eigen::VectorXd & pocket_force, Eigen::VectorXd fixed_force, std::list<size_t> pocket, std::list<size_t> fixed_pocket, Eigen::VectorXd pro_force, Eigen::VectorXd displacement);
 	
-	void calc_energy_known(bool flag, double & proenergy, double & pocketenergy, double & totenergy, Eigen::VectorXd pocket_force, Eigen::MatrixXd distmat);
+	void calc_energy_known(bool flag, double & proenergy, double & pocketenergy, double & totenergy, std::list<size_t> pocket, Eigen::VectorXd pro_force, Eigen::MatrixXd distmat);
 
 	void calc_energy_unknown(bool flag, double & proenergy, double & pocketenergy, double & totenergy, Eigen::VectorXd pocket_force);
 

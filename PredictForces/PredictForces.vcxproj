@@ -70,7 +70,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>C:\public\eigen-3.3.7;C:\public\boost;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Cpp\boost;C:\Cpp\eigen;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Cpp\boost-1.69.0\stage\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IncludePath>C:\public\eigen-3.3.7;$(IncludePath)</IncludePath>

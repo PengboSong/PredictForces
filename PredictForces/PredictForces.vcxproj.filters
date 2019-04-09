@@ -21,9 +21,6 @@
     <ClInclude Include="method.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="addstr.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="Pro.h">
       <Filter>头文件</Filter>
     </ClInclude>
@@ -39,9 +36,6 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="method.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="addstr.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="Pro.cpp">
