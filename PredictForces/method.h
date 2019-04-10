@@ -1,7 +1,4 @@
 #pragma once
-#include <iostream>
-#include <fstream>
-#include <iomanip>
 #include <list>
 #include <cmath>
 #include <Eigen/Dense>
@@ -31,7 +28,7 @@ double calc_average_force(VectorXd force);
 
 MatrixXd gen_distmat(VectorXd coord);
 
-std::list<size_t> gen_pocket(double cutoff, VectorXd dist2ligand);
+list<size_t> gen_pocket(double cutoff, VectorXd dist2ligand);
 
 void normal_equation(VectorXd & coefficient, MatrixXd X, VectorXd Y);
 

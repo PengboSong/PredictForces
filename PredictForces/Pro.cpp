@@ -11,22 +11,20 @@ Pro::Pro(string fpath, bool has_ligand_flag, vector<string> exclude, double k, d
 		exclres.emplace(*it);
 	k_default = k_inter = k_intra = k;
 	cutoff_inter = cutoff_intra = cutoff;
-	cout << setiosflags(ios::fixed) << setprecision(1);
-	cout << "[Info] Spring constant = " << k << " J/(mol A^2)." << endl;
-	cout << "[Info] Cutoff = " << cutoff << " A." << endl;
+	handle_info(boost::format("Spring constant = %1$.1f% J/(mol A^2).") % k);
+	handle_info(boost::format("Cutoff = %1$.1f% A.") % cutoff);
 	read(fpath);
-	cout << "[Info] Successfully loaded protein at path " << fpath << "." << endl;
+	handle_info(boost::format("Successfully loaded protein at path %1%") % fpath);
 	gen_coord();
 	gen_distmat();
 	gen_contact();
 	pairn = contact_pairs.size();
-	cout << "[Info] Coordinate matrix, distance matrix, contact map have been generated for this protein." << endl;
+	handle_info("Coordinate matrix, distance matrix, contact map have been generated for this protein.");
 	if (with_ligand_flag)
 	{
 		gen_dist2ligand();
-		cout << "[Info] Residue distance to ligand has been calculated." << endl;
+		handle_info("Residue distance to ligand has been calculated.");
 	}
-	cout << resetiosflags(ios::fixed);
 }
 
 Pro::~Pro()
@@ -116,9 +114,7 @@ void Pro::read(string fpath)
 		ligandatomn = ligandatomid;
 	}
 	else
-	{
-		cout << "[Error] Unbale to open file " << fpath << '.' << endl;
-	}
+		handle_error("Unbale to open file %1%." % fpath);
 }
 
 void Pro::gen_contact()
@@ -148,9 +144,7 @@ void Pro::gen_contact()
 				kmat(i, j) = kmat(j, i) = k_inter;
 			}
 			else
-			{
 				contact_map(i, j) = contact_map(j, i) = 0;
-			}
 		}
 	}
 
@@ -274,7 +268,7 @@ MatrixXd Pro::gen_covariance(MatrixXd hessian)
 		*/
 	}
 	else
-		cout << "[Error] Hessian matrix has " << zeromoden << " zero modes. Please check it before constructing covariance matrix." << endl;
+		handle_error("Hessian matrix has %1% zero modes. Please check it before constructing covariance matrix." % zeromoden);
 
 	return covariance;
 }
@@ -430,10 +424,12 @@ int Pro::get_contact(size_t i, size_t j)
 
 void Pro::show_contact_pairs()
 {
+	vector<string> buf;
 	for (vector<pair<size_t, size_t>>::iterator it = contact_pairs.begin(); it != contact_pairs.end(); ++it)
-	{
-		cout << '(' << it->first << ',' << it->second << ')' << endl;
-	}
+		buf.push_back(
+			(boost::format("(%1%, %2%)") % it->first % it->second).str()
+		);
+	handle_result("Contact pairs:", buf);
 }
 
 MatrixXi Pro::get_contact_map()

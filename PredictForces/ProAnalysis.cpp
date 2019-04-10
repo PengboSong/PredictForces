@@ -13,9 +13,9 @@ ProAnalysis::ProAnalysis(Pro apo, Pro binding)
 	if (!ProE.empty())
 	{
 		hessian = ProE.gen_hessian(); // unit: J / mol
-		cout << "[Info] Finish constructing Hessian matrix." << endl;
+		handle_info("Finish constructing Hessian matrix.");
 		covariance = ProE.gen_covariance(hessian); // unit: A^2 / mol
-		cout << "[Info] Finish constructing Covariance matrix." << endl;
+		handle_info("Finish constructing Covariance matrix.");
 
 		if (!ProS.empty())
 		{
@@ -42,9 +42,9 @@ ProAnalysis::ProAnalysis(Pro apo, Pro binding, Pro allostery, Pro complex)
 	if (!ProE.empty())
 	{
 		hessian = ProE.gen_hessian(); // unit: J / mol
-		cout << "[Info] Finish constructing Hessian matrix." << endl;
+		handle_info("Finish constructing Hessian matrix.");
 		covariance = ProE.gen_covariance(hessian); // unit: A^2 / mol
-		cout << "[Info] Finish constructing Covariance matrix." << endl;
+		handle_info("Finish constructing Covariance matrix.");
 
 		if (!ProS.empty())
 		{
@@ -118,11 +118,10 @@ void ProAnalysis::interactive_pocket(string mode)
 						add_to_pocketAS(resid);
 				}
 				else
-					cout << "[Info] Input residue ID out of range. Please enter again." << endl;
+					handle_info("Input residue ID out of range. Please enter again.");
 			}
 			else
-				cout << "No residue ID given. Please enter again." << endl;
-			
+				handle_hint("No residue ID given. Please enter again.");
 		}
 		else if (cmd.substr(0, 3) == "del")
 		{
@@ -141,10 +140,10 @@ void ProAnalysis::interactive_pocket(string mode)
 						remove_from_pocketAS(resid);
 				}
 				else
-					cout << "[Info] Input residue ID out of range. Please enter again." << endl;
+					handle_info("Input residue ID out of range. Please enter again.");
 			}
 			else
-				cout << "No residue ID given. Please enter again." << endl;			
+				handle_hint("No residue ID given. Please enter again.");
 		}
 		else if (cmd.substr(0, 10) == "gen-pocket")
 		{
@@ -161,7 +160,7 @@ void ProAnalysis::interactive_pocket(string mode)
 					gen_pocketAS(cutoff);
 			}
 			else
-				cout << "No cutoff length given. Please enter again." << endl;
+				handle_hint("No cutoff length given. Please enter again.");
 		}
 		else if (cmd == "show")
 		{
@@ -218,7 +217,7 @@ void ProAnalysis::interactive_pocket(string mode)
 				show_proAS_all_force();
 		}
 		else
-			cout << "[Info] Unknown command." << endl;
+			handle_hint("Unknown command.");
 		cmd.clear();
 	}
 }
@@ -243,7 +242,7 @@ void ProAnalysis::interactive()
 		else if (cmd == "energy")
 			gen_free_energy();
 		else
-			cout << "[Info] Unknown command." << endl;
+			handle_hint("Unknown command.");
 		cmd.clear();
 	}
 }
@@ -276,7 +275,7 @@ void ProAnalysis::write_hessian(string writepath)
 	{
 		hessianf << hessian.format(CleanFmt);
 		hessianf.close();
-		cout << "[Info] Hessian matrix has been written to " << writepath << ". " << endl;
+		handle_info(boost::format("Hessian matrix has been written to %1%.") % writepath);
 	}
 }
 
@@ -308,7 +307,7 @@ void ProAnalysis::write_covariance(string writepath)
 	{
 		covariancef << covariance.format(CleanFmt);
 		covariancef.close();
-		cout << "[Info] Covariance matrix has been written to " << writepath << ". " << endl;
+		handle_info(boost::format("Covariance matrix has been written to %1%.") % writepath);
 	}
 }
 
@@ -400,7 +399,7 @@ void ProAnalysis::gen_free_energy()
 		print_energy_results();
 	}
 	else
-		cout << "[Error] Lack necessary protein information." << endl;
+		handle_error("Lack necessary protein information.");
 }
 
 double ProAnalysis::calc_model_rmsd(bool flag, VectorXd pocket_force, VectorXd refcoord)
@@ -413,19 +412,20 @@ double ProAnalysis::calc_model_rmsd(bool flag, VectorXd pocket_force, VectorXd r
 	}
 	else
 	{
-		cout << "[Error] Can not calculate model RMSD without pocket force generated. Call \"gen_pocket*_force\" function first." << endl;
+		handle_warning("Can not calculate model RMSD without pocket force generated. Call \"gen_pocket*_force\" function first.");
 		return 0.0;
 	}
 }
 
 void ProAnalysis::show_pocket(list<size_t> pocket)
 {
-	cout << "[Result] Pocket residues: ";
+	string buf = "Pocket residues: ";
 	for (list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
 	{
-		cout << *it + 1 << " ";
+		buf += to_string(*it + 1) + " "
 	}
-	cout << endl;
+
+	handle_result(buf);
 }
 
 void ProAnalysis::test_pocket(bool flag, bool info, list<size_t> pocket, VectorXd pocket_force, VectorXd refcoord)
@@ -436,46 +436,51 @@ void ProAnalysis::test_pocket(bool flag, bool info, list<size_t> pocket, VectorX
 
 		if (info)
 		{
-			cout << fixed << setprecision(4);
-			cout << "[Result] RMSD between real structure and structure calculated according to current pocket: " << calc_model_rmsd(flag, pocket_force, refcoord) << " A." << endl;
+			handle_result(boost::format("RMSD between real structure and structure calculated according to current pocket: %1% A.") % calc_model_rmsd(flag, pocket_force, refcoord));
 		}
 		else
-			cout << "[Error] Lack necessary protein information." << endl;
+			handle_warning("Lack necessary protein information.");
 	}
 	else
-		cout << "[Error] The binding pocket domain is not specificed." << endl;
+		handle_warning("The binding pocket domain is not specificed.");
 }
 
 void ProAnalysis::show_pocket_force(bool flag, list<size_t> pocket, VectorXd pocket_force)
 {
+	vector<string> buf;
 	if (flag)
 	{
-		cout << "[Result] Pocket force:" << endl;
 		for (list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
 		{
 			Vector3d resforce = Vector3d::Zero();
 			resforce << pocket_force(*it * 3), pocket_force(*it * 3 + 1), pocket_force(*it * 3 + 2);
-			cout << "RES " << *it + 1 << " FORCE " << calc_norm(resforce) << endl;
+			buf.push_back(
+				(boost::format("RES %1% FORCE %2$.4f%") % *it + 1 % calc_norm(resforce)).str()
+			);
 		}
+		handle_result("Pocket force:", buf);
 	}
 	else
-		cout << "[Error] The binding pocket domain is not specificed." << endl;
+		handle_warning("The binding pocket domain is not specificed.");
 }
 
 void ProAnalysis::show_pro_pocket_force(list<size_t> pocket, VectorXd pro_force)
 {
-	cout << "[Result] Pocket force (from protein):" << endl;
+	vector<string> buf;
 	for (list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
 	{
 		Vector3d resforce = Vector3d::Zero();
 		resforce << pro_force(*it * 3), pro_force(*it * 3 + 1), pro_force(*it * 3 + 2);
-		cout << "RES " << *it + 1 << " FORCE " << calc_norm(resforce) << endl;
+		buf.push_back(
+			(boost::format("RES %1% FORCE %2$.4f%") % *it + 1 % calc_norm(resforce)).str()
+		);
 	}
+	handle_result("Pocket force (from structure):", buf);
 }
 
 void ProAnalysis::show_pro_all_force(VectorXd pro_force)
 {
-	cout << "[Result] Pro force:" << endl;
+	vector<string> buf;
 	vector<pair<size_t, double>> forces;
 	for (size_t i = 0; i < ProE.get_resn(); ++i)
 	{
@@ -488,9 +493,11 @@ void ProAnalysis::show_pro_all_force(VectorXd pro_force)
 	});
 
 	for (size_t i = 0; i < ProE.get_resn(); ++i)
-	{
-		cout << i << " RES " << forces[i].first + 1 << " FORCE " << forces[i].second << endl;
-	}
+		buf.push_back(
+			(boost::format("RES %1% FORCE %2$.4f%") % forces[i].first + 1 % forces[i].second).str()
+		);
+
+	handle_result("Protein force", buf);
 }
 
 bool ProAnalysis::in_pocket(list<size_t> pocket, size_t id)
@@ -507,12 +514,12 @@ void ProAnalysis::add_to_pocket(list<size_t> pocket, size_t id)
 	if (id < ProE.get_resn())
 	{
 		if (in_pocket(pocket, id))
-			cout << "[Info] Given residue ID already in pocket." << endl;
+			handle_info("Given residue ID already in pocket.");
 		else
 			pocket.push_back(id);
 	}
 	else
-		cout << "[Error] Given residue ID out of range." << endl;
+		handle_warning("Given residue ID out of range.");
 }
 
 void ProAnalysis::remove_from_pocket(list<size_t> pocket, size_t id)
@@ -526,10 +533,10 @@ void ProAnalysis::remove_from_pocket(list<size_t> pocket, size_t id)
 					pocket.erase(it);
 		}
 		else
-			cout << "[Info] Given residue ID not in pocket. Can not erase it." << endl;
+			handle_info("Given residue ID not in pocket. Can not erase it.");
 	}
 	else
-		cout << "[Error] Given residue ID out of range." << endl;
+		handle_warning("Given residue ID out of range.");
 }
 
 void ProAnalysis::gen_pocket(bool has_ligand, list<size_t> &pocket, double cutoff, VectorXd dist2ligand)
@@ -545,13 +552,10 @@ void ProAnalysis::gen_pocket(bool has_ligand, list<size_t> &pocket, double cutof
 					pocket.push_back(i);
 		}
 		else
-		{
-			cout << fixed << setprecision(2);
-			cout << "[Error] Given cutoff is too short. Minimum possible cutoff is " << dist2ligand.minCoeff() << "." << endl;
-		}
+			handle_warning(boost::format("Given cutoff is too short. Minimum possible cutoff is %1$.2f% A.") % dist2ligand.minCoeff());
 	}
 	else
-		cout << "[Error] Can not find ligand information." << endl;
+		handle_warning("Can not find ligand information.");
 }
 
 void ProAnalysis::gen_pocket_force(bool & flag, VectorXd &pocket_force, list<size_t> pocket, VectorXd pro_force, VectorXd displacement)
@@ -625,7 +629,7 @@ void ProAnalysis::calc_energy_known(bool flag, double &proenergy, double &pocket
 		totenergy = proenergy + pocketenergy;
 	}
 	else
-		cout << "[Error] Can not calculate energy without pocket force generated. Call \"gen_pocket*_force\" function first." << endl;
+		handle_warning("Can not calculate energy without pocket force generated. Call \"gen_pocket*_force\" function first.");
 }
 
 void ProAnalysis::calc_energy_unknown(bool flag, double &proenergy, double &pocketenergy, double &totenergy, VectorXd pocket_force)
@@ -639,52 +643,35 @@ void ProAnalysis::calc_energy_unknown(bool flag, double &proenergy, double &pock
 		totenergy = proenergy + pocketenergy;
 	}
 	else
-		cout << "[Error] Can not calculate energy without pocket force generated. Call \"gen_pocket*_force\" function first." << endl;
-}
-
-void ProAnalysis::debug_energy_unknown(VectorXd pocket_force)
-{
-	VectorXd procoord = covariance * pocket_force + ProE.get_procoord();
-	ArrayXXd distdiffmat = gen_distmat(procoord) - ProE.get_distmat();
-	double proenergy = (distdiffmat.pow(2) * ProE.get_kmat()).sum();
-	double pocketenergy = -pocket_force.transpose() * covariance * pocket_force;
-	double totenergy = proenergy + pocketenergy;
-
-	cout << "---< DEBUG >---" << endl;
-	cout << fixed << setprecision(4);
-	cout << "Total: " << totenergy * 1e-3 << endl;
-	cout << "Pro: " << proenergy * 1e-3 << " kJ/mol." << endl;
-	cout << "Pocket: " << proenergy * 1e-3 << " kJ/mol." << endl;
-	cout << "---< END >---" << endl;
+		handle_warning("Can not calculate energy without pocket force generated. Call \"gen_pocket*_force\" function first.");
 }
 
 void ProAnalysis::print_energy_results()
 {
-	cout << "[Result] Free energy results: " << endl;
-	cout << fixed << setprecision(4);
-	cout << "Free energy for binding state structure S: " << S_energy * 1e-3 << " kJ/mol." << endl;
-	cout << "Pro: " << S_proenergy * 1e-3 << " kJ/mol." << endl;
-	cout << "Pocket: " << S_pocketenergy * 1e-3 << " kJ/mol." << endl;
-	cout << "Free energy for allostery state structure A: " << A_energy * 1e-3 << " kJ/mol." << endl;
-	cout << "Pro: " << A_proenergy * 1e-3 << " kJ/mol." << endl;
-	cout << "Pocket: " << A_pocketenergy * 1e-3 << " kJ/mol." << endl;
-	cout << "Free energy for complex structure AS: " << AS_energy * 1e-3 << " kJ/mol." << endl;
-	cout << "Pro: " << AS_proenergy * 1e-3 << " kJ/mol." << endl;
-	cout << "Pocket: " << AS_pocketenergy * 1e-3 << " kJ/mol." << endl;
-	cout << "Change of free energy: " << ddG * 1e-3 << " kJ/mol." << endl;
+	vector<string> buf;
+	buf.push_back((boost::format("Free energy for binding state structure S: %1$.3f% kJ/mol.") % S_energy * 1e-3).str());
+	buf.push_back((boost::format("Pro: %1$.3f% kJ/mol.") % S_proenergy * 1e-3).str());
+	buf.push_back((boost::format("Pocket: %1$.3f% kJ/mol.") % S_pocketenergy * 1e-3).str());
+	buf.push_back((boost::format("Free energy for allostery state structure A: %1$.3f% kJ/mol.") % A_energy * 1e-3).str());
+	buf.push_back((boost::format("Pro: %1$.3f% kJ/mol.") % A_proenergy * 1e-3).str());
+	buf.push_back((boost::format("Pocket: %1$.3f% kJ/mol.") % A_pocketenergy * 1e-3).str());
+	buf.push_back((boost::format("Free energy for complex state structure AS: %1$.3f% kJ/mol.") % AS_energy * 1e-3).str());
+	buf.push_back((boost::format("Pro: %1$.3f% kJ/mol.") % AS_proenergy * 1e-3).str());
+	buf.push_back((boost::format("Pocket: %1$.3f% kJ/mol.") % AS_pocketenergy * 1e-3).str());
+	buf.push_back((boost::format("Change of free energy: : %1$.3f% kJ/mol.") % ddG * 1e-3).str());
+	handle_result("Free energy results: ", buf);
 
-	cout << "[Result] Free energy all predict results: " << endl;
-	cout << fixed << setprecision(4);
-	cout << "Free energy for binding state structure S: " << S_predict_energy * 1e-3 << " kJ/mol." << endl;
-	cout << "Pro: " << S_predict_proenergy * 1e-3 << " kJ/mol." << endl;
-	cout << "Pocket: " << S_predict_pocketenergy * 1e-3 << " kJ/mol." << endl;
-	cout << "Free energy for allostery state structure A: " << A_predict_energy * 1e-3 << " kJ/mol." << endl;
-	cout << "Pro: " << A_predict_proenergy * 1e-3 << " kJ/mol." << endl;
-	cout << "Pocket: " << A_predict_pocketenergy * 1e-3 << " kJ/mol." << endl;
-	cout << "Free energy for complex structure AS: " << AS_predict_energy * 1e-3 << " kJ/mol." << endl;
-	cout << "Pro: " << AS_predict_proenergy * 1e-3 << " kJ/mol." << endl;
-	cout << "Pocket: " << AS_predict_pocketenergy * 1e-3 << " kJ/mol." << endl;
-	cout << "Change of free energy: " << ddG_predict * 1e-3 << " kJ/mol." << endl;
-
+	buf.clear();	
+	buf.push_back((boost::format("Free energy for binding state structure S: %1$.3f% kJ/mol.") % S_predict_energy * 1e-3).str());
+	buf.push_back((boost::format("Pro: %1$.3f% kJ/mol.") % S_predict_proenergy * 1e-3).str());
+	buf.push_back((boost::format("Pocket: %1$.3f% kJ/mol.") % S_predict_pocketenergy * 1e-3).str());
+	buf.push_back((boost::format("Free energy for allostery state structure A: %1$.3f% kJ/mol.") % A_predict_energy * 1e-3).str());
+	buf.push_back((boost::format("Pro: %1$.3f% kJ/mol.") % A_predict_proenergy * 1e-3).str());
+	buf.push_back((boost::format("Pocket: %1$.3f% kJ/mol.") % A_predict_pocketenergy * 1e-3).str());
+	buf.push_back((boost::format("Free energy for complex state structure AS: %1$.3f% kJ/mol.") % AS_predict_energy * 1e-3).str());
+	buf.push_back((boost::format("Pro: %1$.3f% kJ/mol.") % AS_predict_proenergy * 1e-3).str());
+	buf.push_back((boost::format("Pocket: %1$.3f% kJ/mol.") % AS_predict_pocketenergy * 1e-3).str());
+	buf.push_back((boost::format("Change of free energy: : %1$.3f% kJ/mol.") % ddG_predict * 1e-3).str());
+	handle_result("All predict free energy results: ", buf);
 }
 

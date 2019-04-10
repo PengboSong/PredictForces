@@ -78,10 +78,12 @@
     <LibraryPath>C:\public\boost\stage\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>C:\public\eigen-3.3.7;$(IncludePath)</IncludePath>
+    <IncludePath>C:\public\boost;C:\public\eigen;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\public\boost\stage\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <IncludePath>C:\public\eigen-3.3.7;$(IncludePath)</IncludePath>
+    <IncludePath>C:\public\boost;C:\public\eigen;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\public\boost\stage\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

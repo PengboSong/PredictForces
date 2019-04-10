@@ -158,7 +158,9 @@ list<size_t> gen_pocket(double cutoff, VectorXd dist2ligand)
 				pocket.push_back(i);
 	}
 	else
-		handle_error((boost::format("Given cutoff is too short. Minimum possible cutoff is %1$.2f%.") % dist2ligand.minCoeff()).str());
+		handle_error(
+			boost::format("Given cutoff is too short. Minimum possible cutoff is %1$.2f%.") % dist2ligand.minCoeff()
+		);
 	return pocket;
 }
 
@@ -187,7 +189,9 @@ void BGD(VectorXd &coeff, MatrixXd X, MatrixXd Y, double learning_rate, double c
 			if (isinf(cost))
 			{
 				inf_flag = true;
-				cout << "Iteration times: " << k << endl;
+				handle_warning(
+					boost::format("Reach infinity in %1% steps." % k)
+				)
 				break;
 			}
 
@@ -201,12 +205,13 @@ void BGD(VectorXd &coeff, MatrixXd X, MatrixXd Y, double learning_rate, double c
 		if (inf_flag)
 		{
 			coeff = VectorXd::Random(nfeature);
-			cout << "Using another initialization set: " << endl;
-			cout << coeff << endl;
+			handle_info("Using another initialization set: ")
 		}
 		else
 			break;
 	}
 	if (!converge_flag)
-		handle_warning((boost::format("Do not converge in %1% steps.") % iterations).str());
+		handle_warning(
+			boost::format("Do not converge in %1% steps.") % iterations
+		);
 }

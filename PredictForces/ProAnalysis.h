@@ -6,6 +6,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
 
+#include "manageIO.h"
 #include "Pro.h"
 
 using namespace std;
@@ -218,8 +219,6 @@ private:
 	void calc_energy_known(bool flag, double & proenergy, double & pocketenergy, double & totenergy, list<size_t> pocket, VectorXd pro_force, MatrixXd distmat);
 
 	void calc_energy_unknown(bool flag, double & proenergy, double & pocketenergy, double & totenergy, VectorXd pocket_force);
-
-	void debug_energy_unknown(VectorXd pocket_force);
 		
 	void print_energy_results();
 
