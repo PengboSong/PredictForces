@@ -11,8 +11,7 @@
 
 using namespace std;
 using namespace Eigen;
-using boost::algorithm::trim;
-using boost::lexical_cast;
+using namespace boost::algorithm;
 
 constexpr double PI = 3.1415926535897932;
 
@@ -24,7 +23,7 @@ public:
 	ProAnalysis(Pro apo, Pro binding, Pro allostery, Pro complex);
 	~ProAnalysis();
 
-	void interactive_pocket(string mode);
+	void interactive_pocket(unsigned int mode);
 	void interactive();
 
 	MatrixXd get_hessian();
@@ -47,11 +46,20 @@ public:
 		if (limit > 0)
 			CONVERGENCE = limit;
 	}
-	void set_iteration_times(long N)
+	void set_iteration_times(size_t N)
 	{
-		if (N > 0)
-			ITERATION_TIMES = size_t(N);
+		ITERATION_TIMES = N;
 	}
+	void set_random_times(size_t N)
+	{
+		RANDOM_TIMES = N;
+	}
+
+	void show_LFmethod_detail();
+
+	void set_LFmethod(unsigned int mode);
+
+	void choose_LFmethod();
 
 	list<size_t> get_pocketS() {
 		return pocketS;
@@ -192,6 +200,8 @@ public:
 	void gen_free_energy();
 	
 private:
+	void switch_LFmethod(VectorXd &coeff, MatrixXd X, MatrixXd Y);
+
 	double calc_model_rmsd(bool flag, VectorXd pocket_force, VectorXd refcoord);
 	
 	void show_pocket(list<size_t> pocket);
@@ -206,9 +216,9 @@ private:
 
 	bool in_pocket(list<size_t> pocket, size_t id);
 
-	void add_to_pocket(list<size_t> pocket, size_t id);
+	void add_to_pocket(list<size_t> & pocket, size_t id);
 
-	void remove_from_pocket(list<size_t> pocket, size_t id);
+	void remove_from_pocket(list<size_t> & pocket, size_t id);
 
 	void gen_pocket(bool has_ligand, list<size_t> & pocket, double cutoff, VectorXd dist2ligand);
 
@@ -285,6 +295,7 @@ private:
 	list<size_t> pocketA;
 	list<size_t> pocketAS;
 
+	// Status
 	bool has_pocketS_force_flag = false;
 	bool has_pocketA_force_flag = false;
 	bool has_pocketAS_force_flag = false;
@@ -292,9 +303,14 @@ private:
 	// Matrix formats
 	IOFormat CleanFmt = IOFormat(4, 0, ", ", "\n", "[", "]");
 
+	// Multiple linear fitting method
+	unsigned int LFmethod_mode = 0;
+	map<unsigned int, string> LFmethods = { {0, "Normal Equation"}, {1, "Batch Gradient Descent"} };
+
 	// BGD parameters
 	double LEARNING_STEP = 1e-6;
 	double CONVERGENCE = 1e-2;
 	size_t ITERATION_TIMES = 10000;
+	size_t RANDOM_TIMES = 1000;
 };
 

@@ -89,132 +89,171 @@ ProAnalysis::~ProAnalysis()
 {
 }
 
-void ProAnalysis::interactive_pocket(string mode)
+void ProAnalysis::interactive_pocket(unsigned int mode)
 {
-	string cmd;
-	string para;
-
+	string buf, cmd;
+	vector<string> para;
 	while (true)
 	{
 		cout << '[' << mode << ']' << " >>> ";
-		getline(cin, cmd);
-		trim(cmd);
+		getline(cin, buf);
+		trim(buf);
+		split(para, buf, boost::is_any_of(" "));
+		cmd = para[0];
 		if (cmd == "back")
 			break;
-		else if (cmd.substr(0, 3) == "add")
+		else if (cmd == "add")
 		{
-			para = cmd.substr(3);
-			trim(para);
-			if (!para.empty())
+			if (!para[1].empty())
 			{
-				size_t resid = lexical_cast<size_t>(para) - 1;
-				if (resid < ProE.get_resn())
+				size_t resid = lexical_cast<size_t>(para[1]) - 1;
+				switch (mode)
 				{
-					if (mode == "S")
-						add_to_pocketS(resid);
-					else if (mode == "A")
-						add_to_pocketA(resid);
-					else if (mode == "AS")
-						add_to_pocketAS(resid);
+				case 0:
+					add_to_pocketS(resid);
+					break;
+				case 1:
+					add_to_pocketA(resid);
+					break;
+				case 2:
+					add_to_pocketAS(resid);
+					break;
 				}
-				else
-					handle_info("Input residue ID out of range. Please enter again.");
 			}
 			else
 				handle_hint("No residue ID given. Please enter again.");
 		}
-		else if (cmd.substr(0, 3) == "del")
+		else if (cmd == "del")
 		{
-			para = cmd.substr(3);
-			trim(para);
-			if (!para.empty())
+			if (!para[1].empty())
 			{
-				size_t resid = lexical_cast<size_t>(para) - 1;
-				if (resid < ProE.get_resn())
+				size_t resid = lexical_cast<size_t>(para[1]) - 1;
+				switch (mode)
 				{
-					if (mode == "S")
-						remove_from_pocketS(resid);
-					else if (mode == "A")
-						remove_from_pocketA(resid);
-					else if (mode == "AS")
-						remove_from_pocketAS(resid);
+				case 0:
+					remove_from_pocketS(resid);
+					break;
+				case 1:
+					remove_from_pocketA(resid);
+					break;
+				case 2:
+					remove_from_pocketAS(resid);
+					break;
 				}
-				else
-					handle_info("Input residue ID out of range. Please enter again.");
 			}
 			else
 				handle_hint("No residue ID given. Please enter again.");
 		}
-		else if (cmd.substr(0, 10) == "gen-pocket")
+		else if (cmd == "gen-pocket")
 		{
-			para = cmd.substr(10);
-			trim(para);
-			if (!para.empty())
+			if (!para[1].empty())
 			{
-				double cutoff = lexical_cast<double>(para);
-				if (mode == "S")
+				double cutoff = lexical_cast<double>(para[1]);
+				switch (mode)
+				{
+				case 0:
 					gen_pocketS(cutoff);
-				else if (mode == "A")
+					break;
+				case 1:
 					gen_pocketA(cutoff);
-				else if (mode == "AS")
+					break;
+				case 2:
 					gen_pocketAS(cutoff);
+					break;
+				}
 			}
 			else
 				handle_hint("No cutoff length given. Please enter again.");
 		}
 		else if (cmd == "show")
 		{
-			if (mode == "S")
+			switch (mode)
+			{
+			case 0:
 				show_pocketS();
-			else if (mode == "A")
+				break;
+			case 1:
 				show_pocketA();
-			else if (mode == "AS")
+				break;
+			case 2:
 				show_pocketAS();
+				break;
+			}
 		}
 		else if (cmd == "test")
 		{
-			if (mode == "S")
+			switch (mode)
+			{
+			case 0:
 				test_pocketS();
-			else if (mode == "A")
+				break;
+			case 1:
 				test_pocketA();
-			else if (mode == "AS")
+				break;
+			case 2:
 				test_pocketAS();
+				break;
+			}
 		}
 		else if (cmd == "gen-force")
 		{
-			if (mode == "S")
+			switch (mode)
+			{
+			case 0:
 				gen_pocketS_force();
-			else if (mode == "A")
+				break;
+			case 1:
 				gen_pocketA_force();
-			else if (mode == "AS")
+				break;
+			case 2:
 				gen_pocketAS_force();
+				break;
+			}
 		}
 		else if (cmd == "show-force")
 		{
-			if (mode == "S")
+			switch (mode)
+			{
+			case 0:
 				show_pocketS_force();
-			else if (mode == "A")
+				break;
+			case 1:
 				show_pocketA_force();
-			else if (mode == "AS")
+				break;
+			case 2:
 				show_pocketAS_force();
+				break;
+			}
 		}
 		else if (cmd == "origin-force")
 		{
-			if (mode == "S")
+			switch (mode)
+			{
+			case 0:
 				show_pro_pocketS_force();
-			else if (mode == "A")
+				break;
+			case 1:
 				show_pro_pocketA_force();
-			else if (mode == "AS")
+				break;
+			case 2:
 				show_pro_pocketAS_force();
+				break;
+			}
 		}
 		else if (cmd == "all-origin-force")
 		{
-			if (mode == "S")
+			switch (mode)
+			{
+			case 0:
 				show_proS_all_force();
-			else if (mode == "A")
+				break;
+			case 1:
 				show_proA_all_force();
-			else if (mode == "AS")
+				break;
+			case 2:
 				show_proAS_all_force();
+				break;
+			}
 		}
 		else
 			handle_hint("Unknown command.");
@@ -224,23 +263,34 @@ void ProAnalysis::interactive_pocket(string mode)
 
 void ProAnalysis::interactive()
 {
-	string cmd;
-	string para;
+	string buf, cmd;
+	vector<string> para;
 	while (true)
 	{
 		cout << ">>> ";
-		getline(cin, cmd);
-		trim(cmd);
+		getline(cin, buf);
+		trim(buf);
+		split(para, buf, boost::is_any_of(" "));
+		cmd = para[0];
 		if (cmd == "exit")
 			break;
 		else if (cmd == "pocketS")
-			interactive_pocket("S");
+			interactive_pocket(0);
 		else if (cmd == "pocketA")
-			interactive_pocket("A");
+			interactive_pocket(1);
 		else if (cmd == "pocketAS")
-			interactive_pocket("AS");
+			interactive_pocket(2);
 		else if (cmd == "energy")
 			gen_free_energy();
+		else if (cmd == "LFmethod")
+		{
+			choose_LFmethod();
+			show_LFmethod_detail();
+		}
+		else if (cmd == "LFpara")
+		{
+			// TODO;
+		}
 		else
 			handle_hint("Unknown command.");
 		cmd.clear();
@@ -309,6 +359,43 @@ void ProAnalysis::write_covariance(string writepath)
 		covariancef.close();
 		handle_info(boost::format("Covariance matrix has been written to %1%.") % writepath);
 	}
+}
+
+void ProAnalysis::show_LFmethod_detail()
+{
+	switch (LFmethod_mode)
+	{
+	case 0:
+		// Normal Equation
+		handle_info("Multiple Linear Fitting using normal equation.");
+		break;
+	case 1:
+		// Batch Gradient Descent
+		handle_info("Multiple Linear Fitting using batch gradient descent.");
+		handle_info(boost::format("Using learning step %1$.2e") % LEARNING_STEP);
+		handle_info(boost::format("Using convergence %1$.2e") % CONVERGENCE);
+		handle_info(boost::format("Using maximum iteration times %1%") % ITERATION_TIMES);
+		handle_info(boost::format("Using random times %1%") % RANDOM_TIMES);
+		break;
+	default:
+		handle_warning("Invalid LF method mode.");
+	}
+}
+
+void ProAnalysis::set_LFmethod(unsigned int mode)
+{
+	if (LFmethods.find(mode) != LFmethods.end())
+		LFmethod_mode = mode;
+}
+
+void ProAnalysis::choose_LFmethod()
+{
+	for (map<unsigned int, string>::iterator it = LFmethods.begin(); it != LFmethods.end(); ++it)
+		handle_hint(boost::format("%2% - %1%") % it->first % it->second);
+	string buf;
+	cout << "Enter method id:";
+	cin >> buf;
+	set_LFmethod(lexical_cast<unsigned int>(buf));
 }
 
 void ProAnalysis::gen_free_energy()
@@ -402,6 +489,19 @@ void ProAnalysis::gen_free_energy()
 		handle_error("Lack necessary protein information.");
 }
 
+void ProAnalysis::switch_LFmethod(VectorXd & coeff, MatrixXd X, MatrixXd Y)
+{
+	switch (LFmethod_mode)
+	{
+	case 0:
+		normal_equation(coeff, X, Y);
+	case 1:
+		BGD(coeff, X, Y, LEARNING_STEP, CONVERGENCE, ITERATION_TIMES, RANDOM_TIMES);
+	default:
+		normal_equation(coeff, X, Y);
+	}
+}
+
 double ProAnalysis::calc_model_rmsd(bool flag, VectorXd pocket_force, VectorXd refcoord)
 {
 	if (flag)
@@ -422,7 +522,7 @@ void ProAnalysis::show_pocket(list<size_t> pocket)
 	string buf = "Pocket residues: ";
 	for (list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
 	{
-		buf += to_string(*it + 1) + " "
+		buf += to_string(*it + 1) + " ";
 	}
 
 	handle_result(buf);
@@ -433,11 +533,8 @@ void ProAnalysis::test_pocket(bool flag, bool info, list<size_t> pocket, VectorX
 	if (!pocket.empty() && flag)
 	{
 		show_pocket(pocket);
-
 		if (info)
-		{
 			handle_result(boost::format("RMSD between real structure and structure calculated according to current pocket: %1% A.") % calc_model_rmsd(flag, pocket_force, refcoord));
-		}
 		else
 			handle_warning("Lack necessary protein information.");
 	}
@@ -455,7 +552,7 @@ void ProAnalysis::show_pocket_force(bool flag, list<size_t> pocket, VectorXd poc
 			Vector3d resforce = Vector3d::Zero();
 			resforce << pocket_force(*it * 3), pocket_force(*it * 3 + 1), pocket_force(*it * 3 + 2);
 			buf.push_back(
-				(boost::format("RES %1% FORCE %2$.4f%") % *it + 1 % calc_norm(resforce)).str()
+				(boost::format("RES %1% FORCE %2$.4f") % (*it + 1) % calc_norm(resforce)).str()
 			);
 		}
 		handle_result("Pocket force:", buf);
@@ -472,7 +569,7 @@ void ProAnalysis::show_pro_pocket_force(list<size_t> pocket, VectorXd pro_force)
 		Vector3d resforce = Vector3d::Zero();
 		resforce << pro_force(*it * 3), pro_force(*it * 3 + 1), pro_force(*it * 3 + 2);
 		buf.push_back(
-			(boost::format("RES %1% FORCE %2$.4f%") % *it + 1 % calc_norm(resforce)).str()
+			(boost::format("RES %1% FORCE %2$.4f") % (*it + 1) % calc_norm(resforce)).str()
 		);
 	}
 	handle_result("Pocket force (from structure):", buf);
@@ -494,7 +591,7 @@ void ProAnalysis::show_pro_all_force(VectorXd pro_force)
 
 	for (size_t i = 0; i < ProE.get_resn(); ++i)
 		buf.push_back(
-			(boost::format("RES %1% FORCE %2$.4f%") % forces[i].first + 1 % forces[i].second).str()
+			(boost::format("RES %1% FORCE %2$.4f") % (forces[i].first + 1) % forces[i].second).str()
 		);
 
 	handle_result("Protein force", buf);
@@ -509,20 +606,23 @@ bool ProAnalysis::in_pocket(list<size_t> pocket, size_t id)
 	return find_element_flag;
 }
 
-void ProAnalysis::add_to_pocket(list<size_t> pocket, size_t id)
+void ProAnalysis::add_to_pocket(list<size_t> & pocket, size_t id)
 {
 	if (id < ProE.get_resn())
 	{
 		if (in_pocket(pocket, id))
 			handle_info("Given residue ID already in pocket.");
 		else
+		{
 			pocket.push_back(id);
+			handle_info(boost::format("Add residue %1% to pocket.") % (id + 1));
+		}
 	}
 	else
 		handle_warning("Given residue ID out of range.");
 }
 
-void ProAnalysis::remove_from_pocket(list<size_t> pocket, size_t id)
+void ProAnalysis::remove_from_pocket(list<size_t> & pocket, size_t id)
 {
 	if (id < ProE.get_resn())
 	{
@@ -530,7 +630,10 @@ void ProAnalysis::remove_from_pocket(list<size_t> pocket, size_t id)
 		{
 			for (list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
 				if (*it == id)
+				{
 					pocket.erase(it);
+					handle_info(boost::format("Remove residue %1% from pocket.") % (id + 1));
+				}
 		}
 		else
 			handle_info("Given residue ID not in pocket. Can not erase it.");
@@ -552,7 +655,7 @@ void ProAnalysis::gen_pocket(bool has_ligand, list<size_t> &pocket, double cutof
 					pocket.push_back(i);
 		}
 		else
-			handle_warning(boost::format("Given cutoff is too short. Minimum possible cutoff is %1$.2f% A.") % dist2ligand.minCoeff());
+			handle_warning(boost::format("Given cutoff is too short. Minimum possible cutoff is %1$.2f A.") % dist2ligand.minCoeff());
 	}
 	else
 		handle_warning("Can not find ligand information.");
@@ -581,14 +684,7 @@ void ProAnalysis::gen_pocket_force(bool & flag, VectorXd &pocket_force, list<siz
 		++i;
 	}
 
-	/*
-	cout << resetiosflags(ios::fixed);
-	cout << "Using learning step " << LEARNING_STEP << "." << endl;
-	cout << "Using convergence " << CONVERGENCE << "." << endl;
-	cout << setiosflags(ios::fixed);
-	BGD(coeff, X, Y, LEARNING_STEP, CONVERGENCE, ITERATION_TIMES);
-	*/
-	normal_equation(coeff, X, Y);
+	switch_LFmethod(coeff, X, Y);
 
 	i = 0;
 	for (list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
@@ -649,29 +745,29 @@ void ProAnalysis::calc_energy_unknown(bool flag, double &proenergy, double &pock
 void ProAnalysis::print_energy_results()
 {
 	vector<string> buf;
-	buf.push_back((boost::format("Free energy for binding state structure S: %1$.3f% kJ/mol.") % S_energy * 1e-3).str());
-	buf.push_back((boost::format("Pro: %1$.3f% kJ/mol.") % S_proenergy * 1e-3).str());
-	buf.push_back((boost::format("Pocket: %1$.3f% kJ/mol.") % S_pocketenergy * 1e-3).str());
-	buf.push_back((boost::format("Free energy for allostery state structure A: %1$.3f% kJ/mol.") % A_energy * 1e-3).str());
-	buf.push_back((boost::format("Pro: %1$.3f% kJ/mol.") % A_proenergy * 1e-3).str());
-	buf.push_back((boost::format("Pocket: %1$.3f% kJ/mol.") % A_pocketenergy * 1e-3).str());
-	buf.push_back((boost::format("Free energy for complex state structure AS: %1$.3f% kJ/mol.") % AS_energy * 1e-3).str());
-	buf.push_back((boost::format("Pro: %1$.3f% kJ/mol.") % AS_proenergy * 1e-3).str());
-	buf.push_back((boost::format("Pocket: %1$.3f% kJ/mol.") % AS_pocketenergy * 1e-3).str());
-	buf.push_back((boost::format("Change of free energy: : %1$.3f% kJ/mol.") % ddG * 1e-3).str());
+	buf.push_back((boost::format("Free energy for binding state structure S: %1$.3f J/mol.") % S_energy).str());
+	buf.push_back((boost::format("Pro: %1$.3f J/mol.") % S_proenergy).str());
+	buf.push_back((boost::format("Pocket: %1$.3f J/mol.") % S_pocketenergy).str());
+	buf.push_back((boost::format("Free energy for allostery state structure A: %1$.3f J/mol.") % A_energy).str());
+	buf.push_back((boost::format("Pro: %1$.3f J/mol.") % A_proenergy).str());
+	buf.push_back((boost::format("Pocket: %1$.3f J/mol.") % A_pocketenergy).str());
+	buf.push_back((boost::format("Free energy for complex state structure AS: %1$.3f J/mol.") % AS_energy).str());
+	buf.push_back((boost::format("Pro: %1$.3f J/mol.") % AS_proenergy).str());
+	buf.push_back((boost::format("Pocket: %1$.3f J/mol.") % AS_pocketenergy).str());
+	buf.push_back((boost::format("Change of free energy: : %1$.3f J/mol.") % ddG).str());
 	handle_result("Free energy results: ", buf);
 
 	buf.clear();	
-	buf.push_back((boost::format("Free energy for binding state structure S: %1$.3f% kJ/mol.") % S_predict_energy * 1e-3).str());
-	buf.push_back((boost::format("Pro: %1$.3f% kJ/mol.") % S_predict_proenergy * 1e-3).str());
-	buf.push_back((boost::format("Pocket: %1$.3f% kJ/mol.") % S_predict_pocketenergy * 1e-3).str());
-	buf.push_back((boost::format("Free energy for allostery state structure A: %1$.3f% kJ/mol.") % A_predict_energy * 1e-3).str());
-	buf.push_back((boost::format("Pro: %1$.3f% kJ/mol.") % A_predict_proenergy * 1e-3).str());
-	buf.push_back((boost::format("Pocket: %1$.3f% kJ/mol.") % A_predict_pocketenergy * 1e-3).str());
-	buf.push_back((boost::format("Free energy for complex state structure AS: %1$.3f% kJ/mol.") % AS_predict_energy * 1e-3).str());
-	buf.push_back((boost::format("Pro: %1$.3f% kJ/mol.") % AS_predict_proenergy * 1e-3).str());
-	buf.push_back((boost::format("Pocket: %1$.3f% kJ/mol.") % AS_predict_pocketenergy * 1e-3).str());
-	buf.push_back((boost::format("Change of free energy: : %1$.3f% kJ/mol.") % ddG_predict * 1e-3).str());
+	buf.push_back((boost::format("Free energy for binding state structure S: %1$.3f J/mol.") % S_predict_energy).str());
+	buf.push_back((boost::format("Pro: %1$.3f J/mol.") % S_predict_proenergy).str());
+	buf.push_back((boost::format("Pocket: %1$.3f J/mol.") % S_predict_pocketenergy).str());
+	buf.push_back((boost::format("Free energy for allostery state structure A: %1$.3f J/mol.") % A_predict_energy).str());
+	buf.push_back((boost::format("Pro: %1$.3f J/mol.") % A_predict_proenergy).str());
+	buf.push_back((boost::format("Pocket: %1$.3f J/mol.") % A_predict_pocketenergy).str());
+	buf.push_back((boost::format("Free energy for complex state structure AS: %1$.3f J/mol.") % AS_predict_energy).str());
+	buf.push_back((boost::format("Pro: %1$.3f J/mol.") % AS_predict_proenergy).str());
+	buf.push_back((boost::format("Pocket: %1$.3f J/mol.") % AS_predict_pocketenergy).str());
+	buf.push_back((boost::format("Change of free energy: : %1$.3f J/mol.") % ddG_predict).str());
 	handle_result("All predict free energy results: ", buf);
 }
 

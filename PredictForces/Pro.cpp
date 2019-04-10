@@ -11,8 +11,8 @@ Pro::Pro(string fpath, bool has_ligand_flag, vector<string> exclude, double k, d
 		exclres.emplace(*it);
 	k_default = k_inter = k_intra = k;
 	cutoff_inter = cutoff_intra = cutoff;
-	handle_info(boost::format("Spring constant = %1$.1f% J/(mol A^2).") % k);
-	handle_info(boost::format("Cutoff = %1$.1f% A.") % cutoff);
+	handle_info(boost::format("Spring constant = %1$.1f J/(mol A^2).") % k);
+	handle_info(boost::format("Cutoff = %1$.1f A.") % cutoff);
 	read(fpath);
 	handle_info(boost::format("Successfully loaded protein at path %1%") % fpath);
 	gen_coord();
@@ -114,7 +114,7 @@ void Pro::read(string fpath)
 		ligandatomn = ligandatomid;
 	}
 	else
-		handle_error("Unbale to open file %1%." % fpath);
+		handle_error(boost::format("Unbale to open file %1%.") % fpath);
 }
 
 void Pro::gen_contact()
@@ -268,7 +268,7 @@ MatrixXd Pro::gen_covariance(MatrixXd hessian)
 		*/
 	}
 	else
-		handle_error("Hessian matrix has %1% zero modes. Please check it before constructing covariance matrix." % zeromoden);
+		handle_error(boost::format("Hessian matrix has %1% zero modes. Please check it before constructing covariance matrix.") % zeromoden);
 
 	return covariance;
 }

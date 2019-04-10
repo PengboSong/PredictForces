@@ -20,42 +20,65 @@ vector<string> get_exclude_res()
 	getline(cin, exclbuf);
 	trim(exclbuf);
 	vector<string> excl = {};
-	boost::split(excl, exclbuf, boost::is_any_of("\t, "));
+	split(excl, buf, boost::is_any_of(" "));
 	return excl;
+}
+
+double get_spring_constant()
+{
+	string buf;
+	cout << "Enter spring contant: ";
+	getline(cin, buf);
+	trim(buf);
+	return lexical_cast<double>(buf);
+}
+
+double get_cutoff()
+{
+	string buf;
+	cout << "Enter cutoff: ";
+	getline(cin, buf);
+	trim(buf);
+	return lexical_cast<double>(buf);
 }
 
 int main()
 {
-	path datasetpath = "", proname = "";
+	string dataset = "", pro = "";
 	cout << "Enter dataset path: ";
-	cin >> datasetpath;
+	getline(cin, dataset);
 	cout << "Enter protein family name: ";
-	cin >> proname;
+	getline(cin, pro);
+	path workdir = path(dataset) / pro;
 
-	path datadir = datasetpath / proname;
-	if (!boost::filesystem::is_directory(datadir))
-		handle_error("Can not find directory " + datadir.string());
+	if (!boost::filesystem::is_directory(workdir))
+		handle_error(boost::format("Can not find directory %1%.") % workdir.string());
 
 	Pro Apo;
 	Pro Binding;
 	Pro Allostery;
 	Pro Complex;
 
-	cin.get();
 	string aponame = "", bindingname = "", allosteryname = "", complexname = "";
+	path pdbf = "";
+	vector<string> excl = {};
+	double spring_constant = 1.0;
+	double cutoff = 10.0;
+
 	cout << "Enter PDB name for apo state:";
 	getline(cin, aponame);
 	trim(aponame);
-
 	if (aponame.empty())
 		handle_error("Apo state must be loaded.");
 	else
 	{
 		if (!ends_with(aponame, ".pdb"))
 			aponame += ".pdb";
-		path apopath = datadir / aponame;
-		vector<string> apoexcl = get_exclude_res();
-		Apo = Pro(apopath.string(), false, apoexcl);
+		pdbf = workdir / aponame;
+		excl = get_exclude_res();
+		spring_constant = get_spring_constant();
+		cutoff = get_cutoff();
+		Apo = Pro(pdbf.string(), false, excl, spring_constant, cutoff);
 	}
 
 	cout << "Enter PDB name for binding state:";
@@ -65,9 +88,11 @@ int main()
 	{
 		if (!boost::algorithm::ends_with(bindingname, ".pdb"))
 			bindingname += ".pdb";
-		path bindingpath = datadir / bindingname;
-		vector<string> bindingexcl = get_exclude_res();
-		Binding = Pro(bindingpath.string(), true, bindingexcl);
+		pdbf = workdir / bindingname;
+		excl = get_exclude_res();
+		spring_constant = get_spring_constant();
+		cutoff = get_cutoff();
+		Binding = Pro(pdbf.string(), true, excl, spring_constant, cutoff);
 	}
 
 	cout << "Enter PDB name for allostery state:";
@@ -77,9 +102,11 @@ int main()
 	{
 		if (!boost::algorithm::ends_with(allosteryname, ".pdb"))
 			allosteryname += ".pdb";
-		path allosterypath = datadir / allosteryname;
-		vector<string> allosteryexcl = get_exclude_res();
-		Allostery = Pro(allosterypath.string(), true, allosteryexcl);
+		pdbf = workdir / allosteryname;
+		excl = get_exclude_res();
+		spring_constant = get_spring_constant();
+		cutoff = get_cutoff();
+		Allostery = Pro(pdbf.string(), true, excl, spring_constant, cutoff);
 	}
 
 	cout << "Enter PDB name for complex state:";
@@ -89,9 +116,11 @@ int main()
 	{
 		if (!boost::algorithm::ends_with(complexname, ".pdb"))
 			complexname += ".pdb";
-		path complexpath = datadir / complexname;
-		vector<string> complexexcl = get_exclude_res();
-		Complex = Pro(complexpath.string(), true, complexexcl);
+		pdbf = workdir / complexname;
+		excl = get_exclude_res();
+		spring_constant = get_spring_constant();
+		cutoff = get_cutoff();
+		Complex = Pro(pdbf.string(), true, excl, spring_constant, cutoff);
 	}
 
 	ProAnalysis Cycle(Apo, Binding, Allostery, Complex);

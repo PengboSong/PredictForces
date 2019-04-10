@@ -22,16 +22,20 @@ void handle_warning(boost::format info)
 
 void handle_error(string info)
 {
+	cin.get();
 	cout << "[Error] " << info << endl;
 	cout << "Program interrupted. Press any key to exit...";
 	cin.get();
+	exit(1);
 }
 
 void handle_error(boost::format info)
 {
+	cin.get();
 	cout << "[Error] " << info << endl;
 	cout << "Program interrupted. Press any key to exit...";
 	cin.get();
+	exit(1);
 }
 
 void handle_result(string info)

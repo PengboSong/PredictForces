@@ -17,5 +17,8 @@ void handle_error(boost::format info);
 
 void handle_result(string info);
 void handle_result(boost::format info);
-
 void handle_result(string info, vector<string> buf);
+
+void handle_hint(string info);
+
+void handle_hint(boost::format info);

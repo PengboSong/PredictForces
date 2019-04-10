@@ -32,4 +32,4 @@ list<size_t> gen_pocket(double cutoff, VectorXd dist2ligand);
 
 void normal_equation(VectorXd & coefficient, MatrixXd X, VectorXd Y);
 
-void BGD(VectorXd & coeff, MatrixXd X, MatrixXd Y, double learning_rate, double convergence, size_t iterations);
+void BGD(VectorXd & coeff, MatrixXd X, MatrixXd Y, double learning_rate, double convergence, size_t iterations, size_t randoms);

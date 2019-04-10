@@ -159,7 +159,7 @@ list<size_t> gen_pocket(double cutoff, VectorXd dist2ligand)
 	}
 	else
 		handle_error(
-			boost::format("Given cutoff is too short. Minimum possible cutoff is %1$.2f%.") % dist2ligand.minCoeff()
+			boost::format("Given cutoff is too short. Minimum possible cutoff is %1$.2f.") % dist2ligand.minCoeff()
 		);
 	return pocket;
 }
@@ -170,16 +170,15 @@ void normal_equation(VectorXd &coeff, MatrixXd X, VectorXd Y)
 }
 
 // Batch Gradient Descent
-void BGD(VectorXd &coeff, MatrixXd X, MatrixXd Y, double learning_rate, double convergence, size_t iterations)
+void BGD(VectorXd &coeff, MatrixXd X, MatrixXd Y, double learning_rate, double convergence, size_t iterations, size_t randoms)
 {
-	double MAX_RANDOM_TIMES = 1000;
 	size_t nfeature = coeff.size();
 	size_t nsample = Y.size();
 	double cost = 0.0;
 	double prev_cost = 0.0;
 	bool converge_flag = false;
 	bool inf_flag = false;
-	for (size_t l = 0; l < MAX_RANDOM_TIMES; ++l)
+	for (size_t l = 0; l < randoms; ++l)
 	{
 		for (size_t k = 0; k < iterations; ++k)
 		{
@@ -190,8 +189,8 @@ void BGD(VectorXd &coeff, MatrixXd X, MatrixXd Y, double learning_rate, double c
 			{
 				inf_flag = true;
 				handle_warning(
-					boost::format("Reach infinity in %1% steps." % k)
-				)
+					boost::format("Reach infinity in %1% steps.") % k
+				);
 				break;
 			}
 
@@ -205,7 +204,7 @@ void BGD(VectorXd &coeff, MatrixXd X, MatrixXd Y, double learning_rate, double c
 		if (inf_flag)
 		{
 			coeff = VectorXd::Random(nfeature);
-			handle_info("Using another initialization set: ")
+			handle_info("Using another initialization set: ");
 		}
 		else
 			break;
