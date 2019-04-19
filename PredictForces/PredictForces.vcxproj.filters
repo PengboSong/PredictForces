@@ -27,7 +27,7 @@
     <ClInclude Include="read_pdb.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="manageIO.h">
+    <ClInclude Include="handle_io.h">
       <Filter>header</Filter>
     </ClInclude>
   </ItemGroup>
@@ -47,7 +47,7 @@
     <ClCompile Include="read_pdb.cpp">
       <Filter>source</Filter>
     </ClCompile>
-    <ClCompile Include="manageIO.cpp">
+    <ClCompile Include="handle_io.cpp">
       <Filter>source</Filter>
     </ClCompile>
   </ItemGroup>

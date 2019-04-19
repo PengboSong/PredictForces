@@ -1,4 +1,3 @@
-#include "addstr.h"
 #include "ReadPro.h"
 
 ReadPro::ReadPro(std::string line)

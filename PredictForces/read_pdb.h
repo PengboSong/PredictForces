@@ -4,8 +4,8 @@
 #include <boost/algorithm/string.hpp>
 
 using namespace std;
-using boost::algorithm::trim;
 using boost::lexical_cast;
+using boost::algorithm::trim;
 
 struct ResInfo
 {

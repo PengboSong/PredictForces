@@ -159,7 +159,7 @@ list<size_t> gen_pocket(double cutoff, VectorXd dist2ligand)
 	}
 	else
 		handle_error(
-			boost::format("Given cutoff is too short. Minimum possible cutoff is %1$.2f.") % dist2ligand.minCoeff()
+			format("Given cutoff is too short. Minimum possible cutoff is %1$.2f.") % dist2ligand.minCoeff()
 		);
 	return pocket;
 }
@@ -189,7 +189,7 @@ void BGD(VectorXd &coeff, MatrixXd X, MatrixXd Y, double learning_rate, double c
 			{
 				inf_flag = true;
 				handle_warning(
-					boost::format("Reach infinity in %1% steps.") % k
+					format("Reach infinity in %1% steps.") % k
 				);
 				break;
 			}
@@ -211,6 +211,6 @@ void BGD(VectorXd &coeff, MatrixXd X, MatrixXd Y, double learning_rate, double c
 	}
 	if (!converge_flag)
 		handle_warning(
-			boost::format("Do not converge in %1% steps.") % iterations
+			format("Do not converge in %1% steps.") % iterations
 		);
 }

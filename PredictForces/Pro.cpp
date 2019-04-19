@@ -11,10 +11,10 @@ Pro::Pro(string fpath, bool has_ligand_flag, vector<string> exclude, double k, d
 		exclres.emplace(*it);
 	k_default = k_inter = k_intra = k;
 	cutoff_inter = cutoff_intra = cutoff;
-	handle_info(boost::format("Spring constant = %1$.1f J/(mol A^2).") % k);
-	handle_info(boost::format("Cutoff = %1$.1f A.") % cutoff);
+	handle_info(format("Spring constant = %1$.1f J/(mol A^2).") % k);
+	handle_info(format("Cutoff = %1$.1f A.") % cutoff);
 	read(fpath);
-	handle_info(boost::format("Successfully loaded protein at path %1%") % fpath);
+	handle_info(format("Successfully loaded protein at path %1%") % fpath);
 	gen_coord();
 	gen_distmat();
 	gen_contact();
@@ -109,12 +109,13 @@ void Pro::read(string fpath)
 			}
 		}
 		pdb.close();
+		line.clear();
 		resn = proid + 1;
 		proatomn = proatomid;
 		ligandatomn = ligandatomid;
 	}
 	else
-		handle_error(boost::format("Unbale to open file %1%.") % fpath);
+		handle_error(format("Unbale to open file %1%.") % fpath);
 }
 
 void Pro::gen_contact()
@@ -268,7 +269,7 @@ MatrixXd Pro::gen_covariance(MatrixXd hessian)
 		*/
 	}
 	else
-		handle_error(boost::format("Hessian matrix has %1% zero modes. Please check it before constructing covariance matrix.") % zeromoden);
+		handle_error(format("Hessian matrix has %1% zero modes. Please check it before constructing covariance matrix.") % zeromoden);
 
 	return covariance;
 }
@@ -427,7 +428,7 @@ void Pro::show_contact_pairs()
 	vector<string> buf;
 	for (vector<pair<size_t, size_t>>::iterator it = contact_pairs.begin(); it != contact_pairs.end(); ++it)
 		buf.push_back(
-			(boost::format("(%1%, %2%)") % it->first % it->second).str()
+			(format("(%1%, %2%)") % it->first % it->second).str()
 		);
 	handle_result("Contact pairs:", buf);
 }

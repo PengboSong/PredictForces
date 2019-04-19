@@ -5,10 +5,11 @@
 #include <Eigen/QR>
 #include <boost/format.hpp>
 
-#include "manageIO.h"
+#include "handle_io.h"
 
 using namespace std;
 using namespace Eigen;
+using boost::format;
 
 VectorXd rotate(VectorXd coord, Vector3d axis, double angle);
 

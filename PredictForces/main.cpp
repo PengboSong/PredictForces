@@ -1,24 +1,27 @@
 #include <iostream>
 #include <boost/filesystem.hpp>
+#include <boost/format.hpp>
+#include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
-#include "manageIO.h"
+#include "handle_io.h"
 #include "Pro.h"
 #include "ProAnalysis.h"
 
 using namespace std;
 using namespace boost::algorithm;
+using boost::lexical_cast;
 using boost::filesystem::path;
 
 list<double> cutoff_pocket = { 2.5, 3.0, 3.5, 4.0, 4.5, 5.0 };
 
 vector<string> get_exclude_res()
 {
-	string exclbuf = "";
+	string buf = "";
 	cout << "Enter residues to be excluded: ";
-	getline(cin, exclbuf);
-	trim(exclbuf);
+	getline(cin, buf);
+	trim(buf);
 	vector<string> excl = {};
 	split(excl, buf, boost::is_any_of(" "));
 	return excl;
@@ -124,8 +127,8 @@ int main()
 	}
 
 	ProAnalysis Cycle(Apo, Binding, Allostery, Complex);
-	
+
 	Cycle.interactive();
-	
+
 	return 0;
 }

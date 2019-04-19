@@ -325,7 +325,7 @@ void ProAnalysis::write_hessian(string writepath)
 	{
 		hessianf << hessian.format(CleanFmt);
 		hessianf.close();
-		handle_info(boost::format("Hessian matrix has been written to %1%.") % writepath);
+		handle_info(format("Hessian matrix has been written to %1%.") % writepath);
 	}
 }
 
@@ -357,7 +357,7 @@ void ProAnalysis::write_covariance(string writepath)
 	{
 		covariancef << covariance.format(CleanFmt);
 		covariancef.close();
-		handle_info(boost::format("Covariance matrix has been written to %1%.") % writepath);
+		handle_info(format("Covariance matrix has been written to %1%.") % writepath);
 	}
 }
 
@@ -372,10 +372,10 @@ void ProAnalysis::show_LFmethod_detail()
 	case 1:
 		// Batch Gradient Descent
 		handle_info("Multiple Linear Fitting using batch gradient descent.");
-		handle_info(boost::format("Using learning step %1$.2e") % LEARNING_STEP);
-		handle_info(boost::format("Using convergence %1$.2e") % CONVERGENCE);
-		handle_info(boost::format("Using maximum iteration times %1%") % ITERATION_TIMES);
-		handle_info(boost::format("Using random times %1%") % RANDOM_TIMES);
+		handle_info(format("Using learning step %1$.2e") % LEARNING_STEP);
+		handle_info(format("Using convergence %1$.2e") % CONVERGENCE);
+		handle_info(format("Using maximum iteration times %1%") % ITERATION_TIMES);
+		handle_info(format("Using random times %1%") % RANDOM_TIMES);
 		break;
 	default:
 		handle_warning("Invalid LF method mode.");
@@ -391,7 +391,7 @@ void ProAnalysis::set_LFmethod(unsigned int mode)
 void ProAnalysis::choose_LFmethod()
 {
 	for (map<unsigned int, string>::iterator it = LFmethods.begin(); it != LFmethods.end(); ++it)
-		handle_hint(boost::format("%2% - %1%") % it->first % it->second);
+		handle_hint(format("%2% - %1%") % it->first % it->second);
 	string buf;
 	cout << "Enter method id:";
 	cin >> buf;
@@ -534,7 +534,7 @@ void ProAnalysis::test_pocket(bool flag, bool info, list<size_t> pocket, VectorX
 	{
 		show_pocket(pocket);
 		if (info)
-			handle_result(boost::format("RMSD between real structure and structure calculated according to current pocket: %1% A.") % calc_model_rmsd(flag, pocket_force, refcoord));
+			handle_result(format("RMSD between real structure and structure calculated according to current pocket: %1% A.") % calc_model_rmsd(flag, pocket_force, refcoord));
 		else
 			handle_warning("Lack necessary protein information.");
 	}
@@ -552,7 +552,7 @@ void ProAnalysis::show_pocket_force(bool flag, list<size_t> pocket, VectorXd poc
 			Vector3d resforce = Vector3d::Zero();
 			resforce << pocket_force(*it * 3), pocket_force(*it * 3 + 1), pocket_force(*it * 3 + 2);
 			buf.push_back(
-				(boost::format("RES %1% FORCE %2$.4f") % (*it + 1) % calc_norm(resforce)).str()
+				(format("RES %1% FORCE %2$.4f") % (*it + 1) % calc_norm(resforce)).str()
 			);
 		}
 		handle_result("Pocket force:", buf);
@@ -569,7 +569,7 @@ void ProAnalysis::show_pro_pocket_force(list<size_t> pocket, VectorXd pro_force)
 		Vector3d resforce = Vector3d::Zero();
 		resforce << pro_force(*it * 3), pro_force(*it * 3 + 1), pro_force(*it * 3 + 2);
 		buf.push_back(
-			(boost::format("RES %1% FORCE %2$.4f") % (*it + 1) % calc_norm(resforce)).str()
+			(format("RES %1% FORCE %2$.4f") % (*it + 1) % calc_norm(resforce)).str()
 		);
 	}
 	handle_result("Pocket force (from structure):", buf);
@@ -591,7 +591,7 @@ void ProAnalysis::show_pro_all_force(VectorXd pro_force)
 
 	for (size_t i = 0; i < ProE.get_resn(); ++i)
 		buf.push_back(
-			(boost::format("RES %1% FORCE %2$.4f") % (forces[i].first + 1) % forces[i].second).str()
+			(format("RES %1% FORCE %2$.4f") % (forces[i].first + 1) % forces[i].second).str()
 		);
 
 	handle_result("Protein force", buf);
@@ -615,7 +615,7 @@ void ProAnalysis::add_to_pocket(list<size_t> & pocket, size_t id)
 		else
 		{
 			pocket.push_back(id);
-			handle_info(boost::format("Add residue %1% to pocket.") % (id + 1));
+			handle_info(format("Add residue %1% to pocket.") % (id + 1));
 		}
 	}
 	else
@@ -632,7 +632,7 @@ void ProAnalysis::remove_from_pocket(list<size_t> & pocket, size_t id)
 				if (*it == id)
 				{
 					pocket.erase(it);
-					handle_info(boost::format("Remove residue %1% from pocket.") % (id + 1));
+					handle_info(format("Remove residue %1% from pocket.") % (id + 1));
 				}
 		}
 		else
@@ -655,7 +655,7 @@ void ProAnalysis::gen_pocket(bool has_ligand, list<size_t> &pocket, double cutof
 					pocket.push_back(i);
 		}
 		else
-			handle_warning(boost::format("Given cutoff is too short. Minimum possible cutoff is %1$.2f A.") % dist2ligand.minCoeff());
+			handle_warning(format("Given cutoff is too short. Minimum possible cutoff is %1$.2f A.") % dist2ligand.minCoeff());
 	}
 	else
 		handle_warning("Can not find ligand information.");
@@ -745,29 +745,29 @@ void ProAnalysis::calc_energy_unknown(bool flag, double &proenergy, double &pock
 void ProAnalysis::print_energy_results()
 {
 	vector<string> buf;
-	buf.push_back((boost::format("Free energy for binding state structure S: %1$.3f J/mol.") % S_energy).str());
-	buf.push_back((boost::format("Pro: %1$.3f J/mol.") % S_proenergy).str());
-	buf.push_back((boost::format("Pocket: %1$.3f J/mol.") % S_pocketenergy).str());
-	buf.push_back((boost::format("Free energy for allostery state structure A: %1$.3f J/mol.") % A_energy).str());
-	buf.push_back((boost::format("Pro: %1$.3f J/mol.") % A_proenergy).str());
-	buf.push_back((boost::format("Pocket: %1$.3f J/mol.") % A_pocketenergy).str());
-	buf.push_back((boost::format("Free energy for complex state structure AS: %1$.3f J/mol.") % AS_energy).str());
-	buf.push_back((boost::format("Pro: %1$.3f J/mol.") % AS_proenergy).str());
-	buf.push_back((boost::format("Pocket: %1$.3f J/mol.") % AS_pocketenergy).str());
-	buf.push_back((boost::format("Change of free energy: : %1$.3f J/mol.") % ddG).str());
+	buf.push_back((format("Free energy for binding state structure S: %1$.3f J/mol.") % S_energy).str());
+	buf.push_back((format("Pro: %1$.3f J/mol.") % S_proenergy).str());
+	buf.push_back((format("Pocket: %1$.3f J/mol.") % S_pocketenergy).str());
+	buf.push_back((format("Free energy for allostery state structure A: %1$.3f J/mol.") % A_energy).str());
+	buf.push_back((format("Pro: %1$.3f J/mol.") % A_proenergy).str());
+	buf.push_back((format("Pocket: %1$.3f J/mol.") % A_pocketenergy).str());
+	buf.push_back((format("Free energy for complex state structure AS: %1$.3f J/mol.") % AS_energy).str());
+	buf.push_back((format("Pro: %1$.3f J/mol.") % AS_proenergy).str());
+	buf.push_back((format("Pocket: %1$.3f J/mol.") % AS_pocketenergy).str());
+	buf.push_back((format("Change of free energy: : %1$.3f J/mol.") % ddG).str());
 	handle_result("Free energy results: ", buf);
 
 	buf.clear();	
-	buf.push_back((boost::format("Free energy for binding state structure S: %1$.3f J/mol.") % S_predict_energy).str());
-	buf.push_back((boost::format("Pro: %1$.3f J/mol.") % S_predict_proenergy).str());
-	buf.push_back((boost::format("Pocket: %1$.3f J/mol.") % S_predict_pocketenergy).str());
-	buf.push_back((boost::format("Free energy for allostery state structure A: %1$.3f J/mol.") % A_predict_energy).str());
-	buf.push_back((boost::format("Pro: %1$.3f J/mol.") % A_predict_proenergy).str());
-	buf.push_back((boost::format("Pocket: %1$.3f J/mol.") % A_predict_pocketenergy).str());
-	buf.push_back((boost::format("Free energy for complex state structure AS: %1$.3f J/mol.") % AS_predict_energy).str());
-	buf.push_back((boost::format("Pro: %1$.3f J/mol.") % AS_predict_proenergy).str());
-	buf.push_back((boost::format("Pocket: %1$.3f J/mol.") % AS_predict_pocketenergy).str());
-	buf.push_back((boost::format("Change of free energy: : %1$.3f J/mol.") % ddG_predict).str());
+	buf.push_back((format("Free energy for binding state structure S: %1$.3f J/mol.") % S_predict_energy).str());
+	buf.push_back((format("Pro: %1$.3f J/mol.") % S_predict_proenergy).str());
+	buf.push_back((format("Pocket: %1$.3f J/mol.") % S_predict_pocketenergy).str());
+	buf.push_back((format("Free energy for allostery state structure A: %1$.3f J/mol.") % A_predict_energy).str());
+	buf.push_back((format("Pro: %1$.3f J/mol.") % A_predict_proenergy).str());
+	buf.push_back((format("Pocket: %1$.3f J/mol.") % A_predict_pocketenergy).str());
+	buf.push_back((format("Free energy for complex state structure AS: %1$.3f J/mol.") % AS_predict_energy).str());
+	buf.push_back((format("Pro: %1$.3f J/mol.") % AS_predict_proenergy).str());
+	buf.push_back((format("Pocket: %1$.3f J/mol.") % AS_predict_pocketenergy).str());
+	buf.push_back((format("Change of free energy: : %1$.3f J/mol.") % ddG_predict).str());
 	handle_result("All predict free energy results: ", buf);
 }
 

@@ -6,13 +6,15 @@
 #include <set>
 #include <utility>
 #include <limits>
+#include <boost/format.hpp>
 #include <Eigen/Dense>
 
-#include "manageIO.h"
+#include "handle_io.h"
 #include "read_pdb.h"
 
 using namespace std;
 using namespace Eigen;
+using boost::format;
 
 constexpr double Navo = 6.02214076e23;
 constexpr double kB = 1.380649e-23;
@@ -64,13 +66,13 @@ private:
 	double distance(size_t i, size_t j);
 
 	size_t calc_zero_modes(VectorXd eigenvalues, vector<size_t> *zeromodes, vector<size_t> *nonzeromodes);
-	
+
 	size_t calc_zero_modes(VectorXd eigenvalues, VectorXd &zero2inf_eigenvalues);
 
 	void read(string fpath);
 
 	void gen_contact();
-	
+
 	void gen_coord();
 
 	void gen_distmat();

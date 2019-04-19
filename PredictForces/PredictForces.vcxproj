@@ -130,7 +130,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="manageIO.h" />
+    <ClInclude Include="handle_io.h" />
     <ClInclude Include="method.h" />
     <ClInclude Include="Pro.h" />
     <ClInclude Include="ProAnalysis.h" />
@@ -138,7 +138,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="manageIO.cpp" />
+    <ClCompile Include="handle_io.cpp" />
     <ClCompile Include="method.cpp" />
     <ClCompile Include="Pro.cpp" />
     <ClCompile Include="ProAnalysis.cpp" />

@@ -1,17 +1,19 @@
 #pragma once
-#include <iomanip>
 #include <algorithm>
 #include <list>
 #include <utility>
-#include <boost/algorithm/string.hpp>
+#include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/algorithm/string.hpp>
 
-#include "manageIO.h"
+#include "handle_io.h"
 #include "Pro.h"
 
 using namespace std;
 using namespace Eigen;
-using namespace boost::algorithm;
+using boost::format;
+using boost::lexical_cast;
+using boost::algorithm::trim;
 
 constexpr double PI = 3.1415926535897932;
 
@@ -194,16 +196,16 @@ public:
 				gen_pocket_force(has_pocketAS_force_flag, pocketAS_force, pocketA_force, pocketAS, pocketA, EAS_force, EAS_displacement);
 			else
 				gen_pocket_force(has_pocketAS_force_flag, pocketAS_force, pocketAS, EAS_force, EAS_displacement);
-		}			
+		}
 	}
 
 	void gen_free_energy();
-	
+
 private:
 	void switch_LFmethod(VectorXd &coeff, MatrixXd X, MatrixXd Y);
 
 	double calc_model_rmsd(bool flag, VectorXd pocket_force, VectorXd refcoord);
-	
+
 	void show_pocket(list<size_t> pocket);
 
 	void test_pocket(bool flag, bool info, list<size_t> pocket, VectorXd pocket_force, VectorXd refcoord);
@@ -225,11 +227,11 @@ private:
 	void gen_pocket_force(bool & flag, VectorXd & pocket_force, list<size_t> pocket, VectorXd pro_force, VectorXd displacement);
 
 	void gen_pocket_force(bool & flag, VectorXd & pocket_force, VectorXd fixed_force, list<size_t> pocket, list<size_t> fixed_pocket, VectorXd pro_force, VectorXd displacement);
-	
+
 	void calc_energy_known(bool flag, double & proenergy, double & pocketenergy, double & totenergy, list<size_t> pocket, VectorXd pro_force, MatrixXd distmat);
 
 	void calc_energy_unknown(bool flag, double & proenergy, double & pocketenergy, double & totenergy, VectorXd pocket_force);
-		
+
 	void print_energy_results();
 
 	Pro ProE;
@@ -290,7 +292,7 @@ private:
 	VectorXd EAS_force;
 	double EAS_average_force;
 	double EAS_rmsd;
-	
+
 	list<size_t> pocketS;
 	list<size_t> pocketA;
 	list<size_t> pocketAS;
@@ -313,4 +315,3 @@ private:
 	size_t ITERATION_TIMES = 10000;
 	size_t RANDOM_TIMES = 1000;
 };
-
