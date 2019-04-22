@@ -50,43 +50,61 @@ ProAnalysis::ProAnalysis(Pro apo, Pro binding, Pro allostery, Pro complex)
 
 		if (!ProS.empty())
 		{
+			if (ProE.get_resn() != ProS.get_resn())
+				handle_error("Apo state protein and binding state protein do not have equal residue numbers.");
+
 			S_dist2ligand = ProS.get_dist2ligand();
 
 			S_fitprocoord = fitting(ProE.get_procoord(), ProS.get_procoord());
+			handle_info("Fitting process succeed.");
 			ES_displacement = calc_displacement(ProE.get_procoord(), S_fitprocoord);
+			handle_info("Calculating displacement succeed.");
 			ES_force = hessian * ES_displacement; // unit: J A / mol
+			handle_info("Calculating force succeed.");
 			//std::cout << "originES_force: " << "\n" << ES_force << std::endl;
 			// ES_average_force = calc_average_force(ES_force);
 			ES_rmsd = calc_rmsd(ES_displacement); // unit: A
-			std::cout << "rmsd from pdb: " << "\t" << ES_rmsd << std::endl;
+			handle_result(boost::format("RMSD from PDB file: %1% A.") % EA_rmsd);
 			
 			ES_info = true;
 		}
 		if (!ProA.empty())
 		{
+			if (ProE.get_resn() != ProA.get_resn())
+				handle_error("Apo state protein and allostery state protein do not have equal residue numbers.");
+
 			A_dist2ligand = ProA.get_dist2ligand();
 
 			A_fitprocoord = fitting(ProE.get_procoord(), ProA.get_procoord());
+			handle_info("Fitting process succeed.");
 			EA_displacement = calc_displacement(ProE.get_procoord(), A_fitprocoord);
+			handle_info("Calculating displacement succeed.");
 			EA_force = hessian * EA_displacement; // unit: J A / mol
+			handle_info("Calculating force succeed.");
 			//std::cout << "originEA_force: " << "\n" << EA_force << std::endl;
 			// EA_average_force = calc_average_force(EA_force);
 			EA_rmsd = calc_rmsd(EA_displacement); // unit: A
-			std::cout << "rmsd from pdb: " << "\t" << EA_rmsd << std::endl;
+			handle_result(boost::format("RMSD from PDB file: %1% A.") % EA_rmsd);
 
 			EA_info = true;
 		}
 		if (!ProAS.empty())
 		{
+			if (ProE.get_resn() != ProA.get_resn())
+				handle_error("Apo state protein and complex state protein do not have equal residue numbers.");
+			
 			AS_dist2ligand = ProAS.get_dist2ligand();
 
 			AS_fitprocoord = fitting(ProE.get_procoord(), ProAS.get_procoord());
+			handle_info("Fitting process succeed.");
 			EAS_displacement = calc_displacement(ProE.get_procoord(), AS_fitprocoord);
+			handle_info("Calculating displacement succeed.");
 			EAS_force = hessian * EAS_displacement; // unit: J A / mol
+			handle_info("Calculating force succeed.");
 			//std::cout << "originEAS_force: " << "\n" << EAS_force << std::endl;
 			// EAS_average_force = calc_average_force(EAS_force);
 			EAS_rmsd = calc_rmsd(EAS_displacement); // unit: A
-			std::cout << "rmsd from pdb: " << "\t" << EAS_rmsd << std::endl;
+			handle_result(boost::format("RMSD from PDB file: %1% A.") % EA_rmsd);
 
 			EAS_info = true;
 		}
