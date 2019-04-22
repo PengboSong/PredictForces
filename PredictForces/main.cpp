@@ -14,8 +14,6 @@ using namespace boost::algorithm;
 using boost::lexical_cast;
 using boost::filesystem::path;
 
-list<double> cutoff_pocket = { 2.5, 3.0, 3.5, 4.0, 4.5, 5.0 };
-
 vector<string> get_exclude_res()
 {
 	string buf = "";
@@ -66,7 +64,7 @@ int main()
 	path pdbf = "";
 	vector<string> excl = {};
 	double spring_constant = 1.0;
-	double cutoff = 10.0;
+	double cutoff = 9.0;
 
 	cout << "Enter PDB name for apo state:";
 	getline(cin, aponame);
@@ -125,6 +123,7 @@ int main()
 		cutoff = get_cutoff();
 		Complex = Pro(pdbf.string(), true, excl, spring_constant, cutoff);
 	}
+
 
 	ProAnalysis Cycle(Apo, Binding, Allostery, Complex);
 

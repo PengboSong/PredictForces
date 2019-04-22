@@ -24,9 +24,9 @@ ProAnalysis::ProAnalysis(Pro apo, Pro binding)
 			S_fitprocoord = fitting(ProE.get_procoord(), ProS.get_procoord());
 			ES_displacement = calc_displacement(ProE.get_procoord(), S_fitprocoord);
 			ES_force = hessian * ES_displacement;
-			ES_average_force = calc_average_force(ES_force);
+			// ES_average_force = calc_average_force(ES_force);
 			ES_rmsd = calc_rmsd(ES_displacement);
-
+			std::cout << "rmsd from pdb: " << "\t" << ES_rmsd << std::endl;
 			ES_info = true;
 		}
 	}
@@ -48,37 +48,58 @@ ProAnalysis::ProAnalysis(Pro apo, Pro binding, Pro allostery, Pro complex)
 
 		if (!ProS.empty())
 		{
+			if (ProE.get_resn() != ProS.get_resn())
+				handle_error("Apo state protein and binding state protein do not have equal residue numbers.");
+
 			S_dist2ligand = ProS.get_dist2ligand();
 
 			S_fitprocoord = fitting(ProE.get_procoord(), ProS.get_procoord());
+			handle_info("Fitting process succeed.");
 			ES_displacement = calc_displacement(ProE.get_procoord(), S_fitprocoord);
+			handle_info("Calculating displacement succeed.");
 			ES_force = hessian * ES_displacement; // unit: J A / mol
+			handle_info("Calculating force succeed.");
 			ES_average_force = calc_average_force(ES_force);
 			ES_rmsd = calc_rmsd(ES_displacement); // unit: A
+			handle_result(boost::format("RMSD from PDB file: %1% A.") % EA_rmsd);
 
 			ES_info = true;
 		}
 		if (!ProA.empty())
 		{
+			if (ProE.get_resn() != ProA.get_resn())
+				handle_error("Apo state protein and allostery state protein do not have equal residue numbers.");
+
 			A_dist2ligand = ProA.get_dist2ligand();
 
 			A_fitprocoord = fitting(ProE.get_procoord(), ProA.get_procoord());
+			handle_info("Fitting process succeed.");
 			EA_displacement = calc_displacement(ProE.get_procoord(), A_fitprocoord);
+			handle_info("Calculating displacement succeed.");
 			EA_force = hessian * EA_displacement; // unit: J A / mol
+			handle_info("Calculating force succeed.");
 			EA_average_force = calc_average_force(EA_force);
 			EA_rmsd = calc_rmsd(EA_displacement); // unit: A
+			handle_result(boost::format("RMSD from PDB file: %1% A.") % EA_rmsd);
 
 			EA_info = true;
 		}
 		if (!ProAS.empty())
 		{
+			if (ProE.get_resn() != ProA.get_resn())
+				handle_error("Apo state protein and complex state protein do not have equal residue numbers.");
+
 			AS_dist2ligand = ProAS.get_dist2ligand();
 
 			AS_fitprocoord = fitting(ProE.get_procoord(), ProAS.get_procoord());
+			handle_info("Fitting process succeed.");
 			EAS_displacement = calc_displacement(ProE.get_procoord(), AS_fitprocoord);
+			handle_info("Calculating displacement succeed.");
 			EAS_force = hessian * EAS_displacement; // unit: J A / mol
+			handle_info("Calculating force succeed.");
 			EAS_average_force = calc_average_force(EAS_force);
 			EAS_rmsd = calc_rmsd(EAS_displacement); // unit: A
+			handle_result(boost::format("RMSD from PDB file: %1% A.") % EA_rmsd);
 
 			EAS_info = true;
 		}
@@ -402,15 +423,13 @@ void ProAnalysis::gen_free_energy()
 {
 	if (ES_info && EA_info)
 	{
-		gen_pocket_force(has_pocketS_force_flag, pocketS_force, pocketS, ES_force, ES_displacement);
-		calc_energy_known(has_pocketS_force_flag, S_proenergy, S_pocketenergy, S_energy, pocketS, ES_force, ProS.get_distmat());
+		calc_energy_known(has_pocketS_force_flag, S_proenergy, S_pocketenergy, S_energy, pocketS, ES_force, ProS.get_distmat(), ES_displacement);
 		calc_energy_unknown(has_pocketS_force_flag, S_predict_proenergy, S_predict_pocketenergy, S_predict_energy, pocketS_force);
 
-		gen_pocket_force(has_pocketA_force_flag, pocketA_force, pocketA, EA_force, EA_displacement);
-		calc_energy_known(has_pocketA_force_flag, A_proenergy, A_pocketenergy, A_energy, pocketA, EA_force, ProA.get_distmat());
+		calc_energy_known(has_pocketA_force_flag, A_proenergy, A_pocketenergy, A_energy, pocketA, EA_force, ProA.get_distmat(), EA_displacement);
 		calc_energy_unknown(has_pocketA_force_flag, A_predict_proenergy, A_predict_pocketenergy, A_predict_energy, pocketA_force);
 
-		pocketAS_force = pocketS_force + pocketA_force; // Right?
+		pocketAS_force = pocketS_force + pocketA_force;
 		has_pocketAS_force_flag = true;
 		calc_energy_unknown(has_pocketAS_force_flag, AS_proenergy, AS_pocketenergy, AS_energy, pocketAS_force);
 		AS_predict_proenergy = AS_proenergy;
@@ -423,12 +442,10 @@ void ProAnalysis::gen_free_energy()
 	}
 	else if (EAS_info && ES_info)
 	{
-		gen_pocket_force(has_pocketS_force_flag, pocketS_force, pocketS, ES_force, ES_displacement);
-		calc_energy_known(has_pocketS_force_flag, S_proenergy, S_pocketenergy, S_energy, pocketS, ES_force, ProS.get_distmat());
+		calc_energy_known(has_pocketS_force_flag, S_proenergy, S_pocketenergy, S_energy, pocketS, ES_force, ProS.get_distmat(), ES_displacement);
 		calc_energy_unknown(has_pocketS_force_flag, S_predict_proenergy, S_predict_pocketenergy, S_predict_energy, pocketS_force);
 
-		gen_pocket_force(has_pocketAS_force_flag, pocketAS_force, pocketAS, EAS_force, EAS_displacement);
-		calc_energy_known(has_pocketAS_force_flag, AS_proenergy, AS_pocketenergy, AS_energy, pocketAS, EAS_force, ProAS.get_distmat());
+		calc_energy_known(has_pocketAS_force_flag, AS_proenergy, AS_pocketenergy, AS_energy, pocketAS, EAS_force, ProAS.get_distmat(), EAS_displacement);
 		calc_energy_unknown(has_pocketAS_force_flag, AS_predict_proenergy, AS_predict_pocketenergy, AS_predict_energy, pocketAS_force);
 
 		pocketA_force = VectorXd::Zero(pocketAS_force.size());
@@ -455,12 +472,10 @@ void ProAnalysis::gen_free_energy()
 	}
 	else if (EAS_info && EA_info)
 	{
-		gen_pocket_force(has_pocketA_force_flag, pocketA_force, pocketA, EA_force, EA_displacement);
-		calc_energy_known(has_pocketA_force_flag, A_proenergy, A_pocketenergy, A_energy, pocketA, EA_force, ProA.get_distmat());
+		calc_energy_known(has_pocketA_force_flag, A_proenergy, A_pocketenergy, A_energy, pocketA, EA_force, ProA.get_distmat(), EA_displacement);
 		calc_energy_unknown(has_pocketA_force_flag, A_predict_proenergy, A_predict_pocketenergy, A_predict_energy, pocketA_force);
 
-		gen_pocket_force(has_pocketAS_force_flag, pocketAS_force, pocketAS, EAS_force, EAS_displacement);
-		calc_energy_known(has_pocketAS_force_flag, AS_proenergy, AS_pocketenergy, AS_energy, pocketAS, EAS_force, ProAS.get_distmat());
+		calc_energy_known(has_pocketAS_force_flag, AS_proenergy, AS_pocketenergy, AS_energy, pocketAS, EAS_force, ProAS.get_distmat(), EAS_displacement);
 		calc_energy_unknown(has_pocketAS_force_flag, AS_predict_proenergy, AS_predict_pocketenergy, AS_predict_energy, pocketAS_force);
 
 		pocketS_force = VectorXd::Zero(pocketAS_force.size());
@@ -489,7 +504,7 @@ void ProAnalysis::gen_free_energy()
 		handle_error("Lack necessary protein information.");
 }
 
-void ProAnalysis::switch_LFmethod(VectorXd & coeff, MatrixXd X, MatrixXd Y)
+void ProAnalysis::switch_LFmethod(VectorXd & coeff, MatrixXd X, VectorXd Y)
 {
 	switch (LFmethod_mode)
 	{
@@ -498,7 +513,7 @@ void ProAnalysis::switch_LFmethod(VectorXd & coeff, MatrixXd X, MatrixXd Y)
 	case 1:
 		BGD(coeff, X, Y, LEARNING_STEP, CONVERGENCE, ITERATION_TIMES, RANDOM_TIMES);
 	default:
-		normal_equation(coeff, X, Y);
+		BGD(coeff, X, Y, LEARNING_STEP, CONVERGENCE, ITERATION_TIMES, RANDOM_TIMES);
 	}
 }
 
@@ -506,7 +521,7 @@ double ProAnalysis::calc_model_rmsd(bool flag, VectorXd pocket_force, VectorXd r
 {
 	if (flag)
 	{
-		VectorXd mprocoord = covariance * pocket_force + ProE.get_procoord();
+		VectorXd mprocoord = (covariance / kB / Temp / Navo) * pocket_force  + ProE.get_procoord();
 		VectorXd fitmprocoord = fitting(refcoord, mprocoord);
 		return calc_rmsd(refcoord, fitmprocoord);
 	}
@@ -684,6 +699,8 @@ void ProAnalysis::gen_pocket_force(bool & flag, VectorXd &pocket_force, list<siz
 		++i;
 	}
 
+	X /= (Navo * Temp * kB);
+
 	switch_LFmethod(coeff, X, Y);
 
 	i = 0;
@@ -692,13 +709,15 @@ void ProAnalysis::gen_pocket_force(bool & flag, VectorXd &pocket_force, list<siz
 		pocket_force(*it * 3) = coeff(i * 3);
 		pocket_force(*it * 3 + 1) = coeff(i * 3 + 1);
 		pocket_force(*it * 3 + 2) = coeff(i * 3 + 2);
+
+		++i;
 	}
 	flag = true;
 }
 
 void ProAnalysis::gen_pocket_force(bool & flag, VectorXd & pocket_force, VectorXd fixed_force, list<size_t> pocket, list<size_t> fixed_pocket, VectorXd pro_force, VectorXd displacement)
 {
-	VectorXd equiv_displacement = displacement - covariance * fixed_force;
+	VectorXd equiv_displacement = displacement - covariance * fixed_force / kB / Temp / Navo;
 	list<size_t> unfixed_pocket;
 	for (list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
 		if (!in_pocket(fixed_pocket, *it))
@@ -708,7 +727,7 @@ void ProAnalysis::gen_pocket_force(bool & flag, VectorXd & pocket_force, VectorX
 	flag = true;
 }
 
-void ProAnalysis::calc_energy_known(bool flag, double &proenergy, double &pocketenergy, double &totenergy, list<size_t> pocket, VectorXd pro_force, MatrixXd distmat)
+void ProAnalysis::calc_energy_known(bool flag, double &proenergy, double &pocketenergy, double &totenergy, list<size_t> pocket, VectorXd pro_force, MatrixXd distmat, VectorXd displacement)
 {
 	if (flag)
 	{
@@ -720,8 +739,9 @@ void ProAnalysis::calc_energy_known(bool flag, double &proenergy, double &pocket
 			force(*it * 3 + 2) = pro_force(*it * 3 + 2);
 		}
 		ArrayXXd distdiffmat = distmat - ProE.get_distmat();
-		proenergy = (distdiffmat.pow(2) * ProE.get_kmat()).sum();
-		pocketenergy = -force.transpose() * covariance * force;
+		// Distance matrix is symmetric, so protein internal energy is 2 * 2 = 4 folds of real value
+		proenergy = (distdiffmat.pow(2) * ProE.get_kmat()).sum() / 4;
+		pocketenergy = -force.transpose() * displacement;
 		totenergy = proenergy + pocketenergy;
 	}
 	else
@@ -732,10 +752,11 @@ void ProAnalysis::calc_energy_unknown(bool flag, double &proenergy, double &pock
 {
 	if (flag)
 	{
-		VectorXd procoord = covariance * pocket_force + ProE.get_procoord();
+		VectorXd procoord = covariance / kB / Temp / Navo * pocket_force + ProE.get_procoord();
 		ArrayXXd distdiffmat = gen_distmat(procoord) - ProE.get_distmat();
-		proenergy = (distdiffmat.pow(2) * ProE.get_kmat()).sum();
-		pocketenergy = -pocket_force.transpose() * covariance * pocket_force;
+		// Distance matrix is symmetric, so protein internal energy is 2 * 2 = 4 folds of real value
+		proenergy = (distdiffmat.pow(2) * ProE.get_kmat()).sum() / 4;
+		pocketenergy = -pocket_force.transpose() * covariance / kB / Temp / Navo * pocket_force;
 		totenergy = proenergy + pocketenergy;
 	}
 	else
@@ -757,7 +778,7 @@ void ProAnalysis::print_energy_results()
 	buf.push_back((format("Change of free energy: : %1$.3f J/mol.") % ddG).str());
 	handle_result("Free energy results: ", buf);
 
-	buf.clear();	
+	buf.clear();
 	buf.push_back((format("Free energy for binding state structure S: %1$.3f J/mol.") % S_predict_energy).str());
 	buf.push_back((format("Pro: %1$.3f J/mol.") % S_predict_proenergy).str());
 	buf.push_back((format("Pocket: %1$.3f J/mol.") % S_predict_pocketenergy).str());
@@ -770,4 +791,3 @@ void ProAnalysis::print_energy_results()
 	buf.push_back((format("Change of free energy: : %1$.3f J/mol.") % ddG_predict).str());
 	handle_result("All predict free energy results: ", buf);
 }
-

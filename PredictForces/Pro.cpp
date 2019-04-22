@@ -259,13 +259,23 @@ MatrixXd Pro::gen_covariance(MatrixXd hessian)
 
 	if (zeromoden == 6)
 	{
-		MatrixXd U = ArrayXXd(eigenvectors).colwise() / ArrayXd(zero2inf_eigenvalues);
-		covariance = (kB * Navo * Temp / k_default) * (eigenvectors.transpose() * U);
+		MatrixXd U = ArrayXXd(eigenvectors.transpose()).colwise() / ArrayXd(zero2inf_eigenvalues);
+		covariance = (kB * Navo * Temp / k_default) * (eigenvectors * U);
+				
 		/*
 		for (size_t i = 0; i < 3 * resn; ++i)
 			for (size_t j = 0; j < 3 * resn; ++j)
 				for (vector<size_t>::iterator k = nonzeromodes.begin(); k != nonzeromodes.end(); ++k)
 					covariance(i, j) += eigenvectors(*k, i) * eigenvectors(*k, j) / eigenvalues(*k);
+		
+		for (size_t i = 0; i < 3 * resn; ++i)
+			for (size_t j = 0; j <= i; ++j)
+				for (size_t k = 0; k < 3 * resn; ++k)
+					if (eigenvalues(k) > 1e-5)
+					{
+						covariance(i, j) += (kB * Navo * Temp / k_default) * eigenvectors(k, i) * eigenvectors(k, j) / eigenvalues(k);
+						covariance(j, i) = covariance(i, j);
+					}
 		*/
 	}
 	else
@@ -338,7 +348,7 @@ size_t Pro::calc_zero_modes(VectorXd eigenvalues, VectorXd &zero2inf_eigenvalues
 	zero2inf_eigenvalues = eigenvalues;
 
 	for (size_t i = 0; i < size_t(eigenvalues.size()); i++)
-		if (eigenvalues(i) == 0.0 || abs(eigenvalues(i)) < 1e-10)
+		if (eigenvalues(i) == 0.0 || abs(eigenvalues(i)) < 1e-8)
 		{
 			zero2inf_eigenvalues(i) = numeric_limits<double>::infinity();
 			++count;

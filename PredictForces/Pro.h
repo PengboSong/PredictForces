@@ -24,7 +24,7 @@ class Pro
 {
 public:
 	Pro();
-	Pro(string fpath, bool has_ligand_flag, vector<string> exclude = { }, double k = 1.0, double cutoff = 10.0);
+	Pro(string fpath, bool has_ligand_flag, vector<string> exclude = { }, double k = 1.0, double cutoff = 9.0);
 	~Pro();
 
 	bool has_ligand();
@@ -101,8 +101,8 @@ private:
 	size_t proatomn = 0;
 	size_t ligandatomn = 0;
 	size_t pairn = 0;
-	double cutoff_intra = 10.0;
-	double cutoff_inter = 10.0;
+	double cutoff_intra = 9.0;
+	double cutoff_inter = 9.0;
 	double k_intra = 1.0;
 	double k_inter = 1.0;
 	double k_default = 1.0;

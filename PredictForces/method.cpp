@@ -16,7 +16,7 @@ VectorXd rotate(VectorXd coord, Vector3d axis, double angle)
 	rotmat *= sin(angle);
 	rotmat += (1 - cos(angle)) * (axis * axis.transpose());
 	rotmat += cos(angle) * Matrix3d::Identity();
-	
+
 	Map<Matrix3Xd> xyz(coord.data(), 3, coord.size() / 3);
 	Vector3d center = xyz.rowwise().mean();
 	xyz.colwise() -= center;
@@ -111,14 +111,14 @@ double calc_mindist(VectorXd coord1, VectorXd coord2)
 {
 	Map<Matrix3Xd> xyz1(coord1.data(), 3, coord1.size() / 3);
 	Map<Matrix3Xd> xyz2(coord2.data(), 3, coord2.size() / 3);
-	
+
 	VectorXd dist(xyz1.cols());
 	Vector3d onexyz = Vector3d::Zero();
 	Array3Xd diffxyz(3, xyz2.cols());
 	for (size_t i = 0; i < size_t(xyz1.cols()); ++i)
 	{
 		onexyz = xyz1.col(i);
-		diffxyz = xyz2.colwise() - onexyz;		
+		diffxyz = xyz2.colwise() - onexyz;
 		dist(i) = diffxyz.pow(2).colwise().sum().minCoeff();
 	}
 	return dist.minCoeff();
@@ -170,17 +170,24 @@ void normal_equation(VectorXd &coeff, MatrixXd X, VectorXd Y)
 }
 
 // Batch Gradient Descent
-void BGD(VectorXd &coeff, MatrixXd X, MatrixXd Y, double learning_rate, double convergence, size_t iterations, size_t randoms)
+void BGD(VectorXd &coeff, MatrixXd X, VectorXd Y, double learning_rate, double convergence, size_t iterations)
 {
 	size_t nfeature = coeff.size();
 	size_t nsample = Y.size();
 	double cost = 0.0;
 	double prev_cost = 0.0;
+	VectorXd gradient = VectorXd::Zero(nfeature);
+	VectorXd new_gradient = VectorXd::Zero(nfeature);
+	double gradient_product = 0.0, new_gradient_product = 0.0;
 	bool converge_flag = false;
 	bool inf_flag = false;
-	for (size_t l = 0; l < randoms; ++l)
+	for (size_t k = 0; k < iterations; ++k)
 	{
-		for (size_t k = 0; k < iterations; ++k)
+		cost = (X * coeff - Y).dot(X * coeff - Y) / 2 / nsample;
+		// cost = Y.dot(Y) / 2 / nsample;
+		handle_hint(boost::format("Cost: %1$.4f") % cost);
+
+		if (isinf(cost))
 		{
 			coeff -= learning_rate / nsample * ((X * coeff - Y).transpose() * X);
 			cost = (X * coeff - Y).dot(X * coeff - Y) / 2 / nsample;
@@ -201,14 +208,26 @@ void BGD(VectorXd &coeff, MatrixXd X, MatrixXd Y, double learning_rate, double c
 			}
 			prev_cost = cost;
 		}
-		if (inf_flag)
+
+		gradient = ((X * coeff - Y).transpose() * X).transpose() / nsample;
+		if (k > 0 && abs(cost - prev_cost) < convergence)
 		{
-			coeff = VectorXd::Random(nfeature);
-			handle_info("Using another initialization set: ");
-		}
-		else
+			converge_flag = true;
+			cout << "Gradient:" << gradient << endl;
 			break;
+		}
+
+		prev_cost = cost;
+		coeff -= learning_rate / nsample * ((X * coeff - Y).transpose() * X).transpose(); // ?right
+		new_gradient = ((X * coeff - Y).transpose() * X).transpose() / nsample;
+		new_gradient_product = new_gradient.dot(new_gradient);
+		gradient_product = gradient.dot(gradient);
+		if (new_gradient_product > gradient_product)
+			learning_rate /= 2;
+		else if (new_gradient_product < gradient_product)
+			learning_rate *= 1.2;
 	}
+
 	if (!converge_flag)
 		handle_warning(
 			format("Do not converge in %1% steps.") % iterations
