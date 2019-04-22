@@ -11,16 +11,14 @@ using namespace std;
 using namespace boost::algorithm;
 using boost::filesystem::path;
 
-list<double> cutoff_pocket = { 2.5, 3.0, 3.5, 4.0, 4.5, 5.0 };
-
 vector<string> get_exclude_res()
 {
-	string exclbuf = "";
+	string buf = "";
 	cout << "Enter residues to be excluded: ";
-	getline(cin, exclbuf);
-	trim(exclbuf);
+	getline(cin, buf);
+	trim(buf);
 	vector<string> excl = {};
-	split(excl, exclbuf, boost::is_any_of(" "));
+	split(excl, buf, boost::is_any_of(" "));
 	return excl;
 }
 

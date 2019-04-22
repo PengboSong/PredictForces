@@ -253,7 +253,6 @@ MatrixXd Pro::gen_covariance(MatrixXd hessian)
 	VectorXd eigenvalues = eigensolver.eigenvalues();
 	VectorXd zero2inf_eigenvalues = eigenvalues;
 	MatrixXd eigenvectors = eigensolver.eigenvectors();
-	//ofstream eigenvectorsf("C:\\Users\\hqj\\Desktop\\eigenvectors");
 	vector<size_t> zeromodes, nonzeromodes;
 	size_t zeromoden = calc_zero_modes(eigenvalues, zero2inf_eigenvalues);
 
@@ -261,10 +260,6 @@ MatrixXd Pro::gen_covariance(MatrixXd hessian)
 	{
 		MatrixXd U = ArrayXXd(eigenvectors.transpose()).colwise() / ArrayXd(zero2inf_eigenvalues);
 		covariance = (kB * Navo * Temp / k_default) * (eigenvectors * U);
-		//std::cout << "eigenvalues: " << "\n" << eigenvalues << std::endl;
-		//MatrixXd E = covariance * hessian / kB / Navo / Temp;
-		//for (size_t i = 0; i < 3 * resn; ++i)
-			//std::cout << "verify: " << "\n" << E(i,i) << std::endl;
 				
 		/*
 		for (size_t i = 0; i < 3 * resn; ++i)
