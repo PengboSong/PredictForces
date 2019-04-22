@@ -20,7 +20,7 @@ vector<string> get_exclude_res()
 	getline(cin, exclbuf);
 	trim(exclbuf);
 	vector<string> excl = {};
-	split(excl, buf, boost::is_any_of(" "));
+	split(excl, exclbuf, boost::is_any_of(" "));
 	return excl;
 }
 
@@ -63,7 +63,7 @@ int main()
 	path pdbf = "";
 	vector<string> excl = {};
 	double spring_constant = 1.0;
-	double cutoff = 10.0;
+	double cutoff = 9.0;
 
 	cout << "Enter PDB name for apo state:";
 	getline(cin, aponame);
@@ -122,6 +122,7 @@ int main()
 		cutoff = get_cutoff();
 		Complex = Pro(pdbf.string(), true, excl, spring_constant, cutoff);
 	}
+
 
 	ProAnalysis Cycle(Apo, Binding, Allostery, Complex);
 	

@@ -35,7 +35,7 @@ public:
 	Matrix3d get_covariance(size_t i, size_t j);
 	double get_covariance_s(size_t si, size_t sj);
 	void write_covariance(string writepath);
-
+	
 	void set_learning_step(double step)
 	{
 		if (step > 0)
@@ -113,9 +113,11 @@ public:
 
 	void test_pocketS() {
 		test_pocket(has_pocketS_force_flag, ES_info, pocketS, pocketS_force, S_fitprocoord);
+		test_pocket(has_pocketS_force_flag, ES_info, pocketS, pocketS_force, AS_fitprocoord);
 	}
 	void test_pocketA() {
 		test_pocket(has_pocketA_force_flag, EA_info, pocketA, pocketA_force, A_fitprocoord);
+		test_pocket(has_pocketA_force_flag, EA_info, pocketA, pocketA_force, AS_fitprocoord);
 	}
 	void test_pocketAS() {
 		test_pocket(has_pocketAS_force_flag, EAS_info, pocketAS, pocketAS_force, AS_fitprocoord);
@@ -200,7 +202,7 @@ public:
 	void gen_free_energy();
 	
 private:
-	void switch_LFmethod(VectorXd &coeff, MatrixXd X, MatrixXd Y);
+	void switch_LFmethod(VectorXd &coeff, MatrixXd X, VectorXd Y);
 
 	double calc_model_rmsd(bool flag, VectorXd pocket_force, VectorXd refcoord);
 	
@@ -226,7 +228,7 @@ private:
 
 	void gen_pocket_force(bool & flag, VectorXd & pocket_force, VectorXd fixed_force, list<size_t> pocket, list<size_t> fixed_pocket, VectorXd pro_force, VectorXd displacement);
 	
-	void calc_energy_known(bool flag, double & proenergy, double & pocketenergy, double & totenergy, list<size_t> pocket, VectorXd pro_force, MatrixXd distmat);
+	void calc_energy_known(bool flag, double & proenergy, double & pocketenergy, double & totenergy, list<size_t> pocket, VectorXd pro_force, MatrixXd distmat, VectorXd displacement);
 
 	void calc_energy_unknown(bool flag, double & proenergy, double & pocketenergy, double & totenergy, VectorXd pocket_force);
 		
@@ -304,13 +306,13 @@ private:
 	IOFormat CleanFmt = IOFormat(4, 0, ", ", "\n", "[", "]");
 
 	// Multiple linear fitting method
-	unsigned int LFmethod_mode = 0;
+	unsigned int LFmethod_mode = 1;
 	map<unsigned int, string> LFmethods = { {0, "Normal Equation"}, {1, "Batch Gradient Descent"} };
 
 	// BGD parameters
-	double LEARNING_STEP = 1e-6;
-	double CONVERGENCE = 1e-2;
-	size_t ITERATION_TIMES = 10000;
+	double LEARNING_STEP = 1e-2;
+	double CONVERGENCE = 1e-7;
+	size_t ITERATION_TIMES = 1000000;
 	size_t RANDOM_TIMES = 1000;
 };
 

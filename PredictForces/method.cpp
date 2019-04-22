@@ -1,5 +1,9 @@
 #include "method.h"
 
+constexpr double Navo = 6.02214076e23;
+constexpr double kB = 1.380649e-23;
+constexpr double Temp = 298.15;
+
 VectorXd rotate(VectorXd coord, Vector3d axis, double angle)
 {
 	if (axis.dot(axis) != 1.0)
@@ -170,38 +174,52 @@ void normal_equation(VectorXd &coeff, MatrixXd X, VectorXd Y)
 }
 
 // Batch Gradient Descent
-void BGD(VectorXd &coeff, MatrixXd X, MatrixXd Y, double learning_rate, double convergence, size_t iterations, size_t randoms)
+void BGD(VectorXd &coeff, MatrixXd X, VectorXd Y, double learning_rate, double convergence, size_t iterations, size_t randoms)
 {
 	size_t nfeature = coeff.size();
 	size_t nsample = Y.size();
+	//MatrixXd Z = MatrixXd(Y);
+	//std::cout << "coeff: " << "\n" << coeff << std::endl;
 	double cost = 0.0;
 	double prev_cost = 0.0;
+	VectorXd prev_gradient = VectorXd::Zero(nfeature);
+	VectorXd gradient = VectorXd::Zero(nfeature);
 	bool converge_flag = false;
 	bool inf_flag = false;
-	for (size_t l = 0; l < randoms; ++l)
+	/*for (size_t l = 0; l < randoms; ++l)
+	{*/
+	for (size_t k = 0; k < iterations; ++k)
 	{
-		for (size_t k = 0; k < iterations; ++k)
-		{
-			coeff -= learning_rate / nsample * ((X * coeff - Y).transpose() * X);
-			cost = (X * coeff - Y).dot(X * coeff - Y) / 2 / nsample;
+		cost = ((X * coeff / Navo / Temp / kB ) - Y).dot((X * coeff / Navo / Temp / kB ) - Y) / 2 / nsample;
+		//cost = Y.dot(Y) / 2 / nsample;
+		std::cout << "cost: " << "\n" << cost << std::endl;
+		//std::cout << "coeff: " << "\n" << coeff << std::endl;
 
-			if (isinf(cost))
+			/*if (isinf(cost))
 			{
 				inf_flag = true;
 				handle_warning(
 					boost::format("Reach infinity in %1% steps.") % k
 				);
 				break;
-			}
+			}*/
 
-			if (k > 0 && abs(cost - prev_cost) < convergence)
-			{
-				converge_flag = true;
-				break;
-			}
-			prev_cost = cost;
+		if ( k > 0 && abs(cost - prev_cost) < convergence )
+		{
+			converge_flag = true;
+			std::cout << "gradient: " << "\n" <<  (((X * coeff / Navo / Temp / kB) - Y).transpose() * (X / Navo / Temp / kB)).transpose() / nsample << std::endl;
+			break;
 		}
-		if (inf_flag)
+		prev_cost = cost;
+		prev_gradient = (((X * coeff / Navo / Temp / kB) - Y).transpose() * (X / Navo / Temp / kB)).transpose() / nsample;
+		coeff -= learning_rate / nsample * (((X * coeff / Navo / Temp / kB) - Y).transpose() * (X / Navo / Temp / kB)).transpose();// ?right
+		gradient = (((X * coeff / Navo / Temp / kB) - Y).transpose() * (X / Navo / Temp / kB)).transpose() / nsample;
+		if (gradient.transpose() * gradient > prev_gradient.transpose()*prev_gradient)
+			learning_rate /= 2;
+		else if (gradient.transpose() * gradient < prev_gradient.transpose()*prev_gradient)
+			learning_rate *= 1.2;
+	}
+		/*if (inf_flag)
 		{
 			coeff = VectorXd::Random(nfeature);
 			handle_info("Using another initialization set: ");
@@ -212,5 +230,5 @@ void BGD(VectorXd &coeff, MatrixXd X, MatrixXd Y, double learning_rate, double c
 	if (!converge_flag)
 		handle_warning(
 			boost::format("Do not converge in %1% steps.") % iterations
-		);
+		);*/
 }
