@@ -124,7 +124,6 @@ int main()
 		Complex = Pro(pdbf.string(), true, excl, spring_constant, cutoff);
 	}
 
-
 	ProAnalysis Cycle(Apo, Binding, Allostery, Complex);
 
 	Cycle.interactive();

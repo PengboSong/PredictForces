@@ -24,9 +24,9 @@ ProAnalysis::ProAnalysis(Pro apo, Pro binding)
 			S_fitprocoord = fitting(ProE.get_procoord(), ProS.get_procoord());
 			ES_displacement = calc_displacement(ProE.get_procoord(), S_fitprocoord);
 			ES_force = hessian * ES_displacement;
-			// ES_average_force = calc_average_force(ES_force);
+			ES_average_force = calc_average_force(ES_force);
 			ES_rmsd = calc_rmsd(ES_displacement);
-			std::cout << "rmsd from pdb: " << "\t" << ES_rmsd << std::endl;
+			handle_result(format("RMSD from binding state PDB file: %1$.4f A.") % ES_rmsd);
 			ES_info = true;
 		}
 	}
@@ -61,7 +61,7 @@ ProAnalysis::ProAnalysis(Pro apo, Pro binding, Pro allostery, Pro complex)
 			handle_info("Calculating force succeed.");
 			ES_average_force = calc_average_force(ES_force);
 			ES_rmsd = calc_rmsd(ES_displacement); // unit: A
-			handle_result(boost::format("RMSD from PDB file: %1% A.") % EA_rmsd);
+			handle_result(format("RMSD from binding state PDB file: %1$.4f A.") % EA_rmsd);
 
 			ES_info = true;
 		}
@@ -80,7 +80,7 @@ ProAnalysis::ProAnalysis(Pro apo, Pro binding, Pro allostery, Pro complex)
 			handle_info("Calculating force succeed.");
 			EA_average_force = calc_average_force(EA_force);
 			EA_rmsd = calc_rmsd(EA_displacement); // unit: A
-			handle_result(boost::format("RMSD from PDB file: %1% A.") % EA_rmsd);
+			handle_result(format("RMSD from allostery state PDB file: %1$.4f A.") % EA_rmsd);
 
 			EA_info = true;
 		}
@@ -99,7 +99,7 @@ ProAnalysis::ProAnalysis(Pro apo, Pro binding, Pro allostery, Pro complex)
 			handle_info("Calculating force succeed.");
 			EAS_average_force = calc_average_force(EAS_force);
 			EAS_rmsd = calc_rmsd(EAS_displacement); // unit: A
-			handle_result(boost::format("RMSD from PDB file: %1% A.") % EA_rmsd);
+			handle_result(format("RMSD from complex state PDB file: %1$.4f A.") % EAS_rmsd);
 
 			EAS_info = true;
 		}
@@ -112,8 +112,21 @@ ProAnalysis::~ProAnalysis()
 
 void ProAnalysis::interactive_pocket(unsigned int mode)
 {
-	string buf, cmd;
+	string buf, cmd, label;
 	vector<string> para;
+	switch (mode)
+	{
+	case 0:
+		label = "S";
+		break;
+	case 1:
+		label = "A";
+		break;
+	case 2:
+		label = "AS";
+		break;
+	}
+
 	while (true)
 	{
 		cout << '[' << mode << ']' << " >>> ";
@@ -125,9 +138,20 @@ void ProAnalysis::interactive_pocket(unsigned int mode)
 			break;
 		else if (cmd == "add")
 		{
-			if (!para[1].empty())
+			size_t resid = 0;
+			bool convert_flag = true;
+			try
 			{
-				size_t resid = lexical_cast<size_t>(para[1]) - 1;
+				resid = lexical_cast<size_t>(para[1]) - 1;
+			}
+			catch (bad_lexical_cast)
+			{
+				convert_flag = false;
+				handle_hint("No residue ID given. Please enter again.");
+			}
+
+			if (convert_flag)
+			{
 				switch (mode)
 				{
 				case 0:
@@ -141,14 +165,23 @@ void ProAnalysis::interactive_pocket(unsigned int mode)
 					break;
 				}
 			}
-			else
-				handle_hint("No residue ID given. Please enter again.");
 		}
 		else if (cmd == "del")
 		{
-			if (!para[1].empty())
+			size_t resid = 0;
+			bool convert_flag = true;
+			try
 			{
-				size_t resid = lexical_cast<size_t>(para[1]) - 1;
+				resid = lexical_cast<size_t>(para[1]) - 1;
+			}
+			catch (bad_lexical_cast)
+			{
+				convert_flag = false;
+				handle_hint("No residue ID given. Please enter again.");
+			}
+
+			if (convert_flag)
+			{
 				switch (mode)
 				{
 				case 0:
@@ -162,14 +195,23 @@ void ProAnalysis::interactive_pocket(unsigned int mode)
 					break;
 				}
 			}
-			else
-				handle_hint("No residue ID given. Please enter again.");
 		}
 		else if (cmd == "gen-pocket")
 		{
-			if (!para[1].empty())
+			double cutoff = 0.0;
+			bool convert_flag = true;
+			try
 			{
-				double cutoff = lexical_cast<double>(para[1]);
+				cutoff = lexical_cast<double>(para[1]);
+			}
+			catch (bad_lexical_cast)
+			{
+				convert_flag = false;
+				handle_hint("Illegal cutoff length given. Please enter again.");
+			}
+
+			if (convert_flag)
+			{
 				switch (mode)
 				{
 				case 0:
@@ -183,8 +225,6 @@ void ProAnalysis::interactive_pocket(unsigned int mode)
 					break;
 				}
 			}
-			else
-				handle_hint("No cutoff length given. Please enter again.");
 		}
 		else if (cmd == "show")
 		{
@@ -341,13 +381,30 @@ double ProAnalysis::get_hessian_s(size_t si, size_t sj)
 
 void ProAnalysis::write_hessian(string writepath)
 {
-	ofstream hessianf(writepath);
+	ofstream hessianf(writepath, ios::out);
 	if (hessianf.is_open())
 	{
 		hessianf << hessian.format(CleanFmt);
 		hessianf.close();
 		handle_info(format("Hessian matrix has been written to %1%.") % writepath);
 	}
+}
+
+void ProAnalysis::write_hessian_binary(string writepath)
+{
+	ofstream hessianf(writepath, ios::out | ios::binary);
+	if (hessianf.is_open())
+	{
+		double* H = new double(hessian.size());
+		for (size_t i = 0; i < hessian.rows(); ++i)
+		{
+			for (size_t j = 0; j < hessian.cols(); ++j)
+			{
+				// TODO
+			}
+		}
+	}
+
 }
 
 MatrixXd ProAnalysis::get_covariance()
@@ -373,13 +430,18 @@ double ProAnalysis::get_covariance_s(size_t si, size_t sj)
 
 void ProAnalysis::write_covariance(string writepath)
 {
-	ofstream covariancef(writepath);
+	ofstream covariancef(writepath, ios::out);
 	if (covariancef.is_open())
 	{
 		covariancef << covariance.format(CleanFmt);
 		covariancef.close();
 		handle_info(format("Covariance matrix has been written to %1%.") % writepath);
 	}
+}
+
+void ProAnalysis::write_covariance_binary(string writepath)
+{
+	// TODO
 }
 
 void ProAnalysis::show_LFmethod_detail()
@@ -511,9 +573,9 @@ void ProAnalysis::switch_LFmethod(VectorXd & coeff, MatrixXd X, VectorXd Y)
 	case 0:
 		normal_equation(coeff, X, Y);
 	case 1:
-		BGD(coeff, X, Y, LEARNING_STEP, CONVERGENCE, ITERATION_TIMES, RANDOM_TIMES);
+		BGD(coeff, X, Y, LEARNING_STEP, CONVERGENCE, ITERATION_TIMES);
 	default:
-		BGD(coeff, X, Y, LEARNING_STEP, CONVERGENCE, ITERATION_TIMES, RANDOM_TIMES);
+		BGD(coeff, X, Y, LEARNING_STEP, CONVERGENCE, ITERATION_TIMES);
 	}
 }
 

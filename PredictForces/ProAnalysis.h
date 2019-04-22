@@ -1,5 +1,6 @@
 #pragma once
 #include <algorithm>
+#include <fstream>
 #include <list>
 #include <utility>
 #include <boost/format.hpp>
@@ -13,6 +14,7 @@ using namespace std;
 using namespace Eigen;
 using boost::format;
 using boost::lexical_cast;
+using boost::bad_lexical_cast;
 using boost::algorithm::trim;
 
 constexpr double PI = 3.1415926535897932;
@@ -32,11 +34,13 @@ public:
 	Matrix3d get_hessian(size_t i, size_t j);
 	double get_hessian_s(size_t si, size_t sj);
 	void write_hessian(string writepath);
+	void write_hessian_binary(string writepath);
 
 	MatrixXd get_covariance();
 	Matrix3d get_covariance(size_t i, size_t j);
 	double get_covariance_s(size_t si, size_t sj);
 	void write_covariance(string writepath);
+	void write_covariance_binary(string writepath);
 
 	void set_learning_step(double step)
 	{
