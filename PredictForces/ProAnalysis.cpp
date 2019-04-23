@@ -636,7 +636,6 @@ void ProAnalysis::read_matrix_binary(MatrixXd & mat, string fpath)
 		matf.read((char *)&Mcoln, sizeof(size_t));
 		double* M = new double[Msize];
 		matf.read((char *)&M[0], Msize * sizeof(double));
-		cout << M[0] << endl;
 		mat = MatrixXd::Zero(Mrown, Mcoln);
 		for (size_t i = 0; i < Mrown; ++i)
 			for (size_t j = 0; j < Mcoln; ++j)
