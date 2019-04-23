@@ -106,6 +106,80 @@ ProAnalysis::ProAnalysis(Pro apo, Pro binding, Pro allostery, Pro complex)
 	}
 }
 
+ProAnalysis::ProAnalysis(Pro apo, Pro binding, Pro allostery, Pro complex, string hessian_path, string covariance_path)
+{
+	ProE = apo;
+	ProS = binding;
+	ProA = allostery;
+	ProAS = complex;
+
+	if (!ProE.empty())
+	{
+		read_hessian_binary(hessian_path);
+		handle_info("Finish reading Hessian matrix.");
+		read_covariance_binary(covariance_path);
+		handle_info("Finish reading Covariance matrix.");
+
+		if (!ProS.empty())
+		{
+			if (ProE.get_resn() != ProS.get_resn())
+				handle_error("Apo state protein and binding state protein do not have equal residue numbers.");
+
+			S_dist2ligand = ProS.get_dist2ligand();
+
+			S_fitprocoord = fitting(ProE.get_procoord(), ProS.get_procoord());
+			handle_info("Fitting process succeed.");
+			ES_displacement = calc_displacement(ProE.get_procoord(), S_fitprocoord);
+			handle_info("Calculating displacement succeed.");
+			ES_force = hessian * ES_displacement; // unit: J A / mol
+			handle_info("Calculating force succeed.");
+			ES_average_force = calc_average_force(ES_force);
+			ES_rmsd = calc_rmsd(ES_displacement); // unit: A
+			handle_result(format("RMSD from binding state PDB file: %1$.4f A.") % EA_rmsd);
+
+			ES_info = true;
+		}
+		if (!ProA.empty())
+		{
+			if (ProE.get_resn() != ProA.get_resn())
+				handle_error("Apo state protein and allostery state protein do not have equal residue numbers.");
+
+			A_dist2ligand = ProA.get_dist2ligand();
+
+			A_fitprocoord = fitting(ProE.get_procoord(), ProA.get_procoord());
+			handle_info("Fitting process succeed.");
+			EA_displacement = calc_displacement(ProE.get_procoord(), A_fitprocoord);
+			handle_info("Calculating displacement succeed.");
+			EA_force = hessian * EA_displacement; // unit: J A / mol
+			handle_info("Calculating force succeed.");
+			EA_average_force = calc_average_force(EA_force);
+			EA_rmsd = calc_rmsd(EA_displacement); // unit: A
+			handle_result(format("RMSD from allostery state PDB file: %1$.4f A.") % EA_rmsd);
+
+			EA_info = true;
+		}
+		if (!ProAS.empty())
+		{
+			if (ProE.get_resn() != ProA.get_resn())
+				handle_error("Apo state protein and complex state protein do not have equal residue numbers.");
+
+			AS_dist2ligand = ProAS.get_dist2ligand();
+
+			AS_fitprocoord = fitting(ProE.get_procoord(), ProAS.get_procoord());
+			handle_info("Fitting process succeed.");
+			EAS_displacement = calc_displacement(ProE.get_procoord(), AS_fitprocoord);
+			handle_info("Calculating displacement succeed.");
+			EAS_force = hessian * EAS_displacement; // unit: J A / mol
+			handle_info("Calculating force succeed.");
+			EAS_average_force = calc_average_force(EAS_force);
+			EAS_rmsd = calc_rmsd(EAS_displacement); // unit: A
+			handle_result(format("RMSD from complex state PDB file: %1$.4f A.") % EAS_rmsd);
+
+			EAS_info = true;
+		}
+	}
+}
+
 ProAnalysis::~ProAnalysis()
 {
 }
@@ -358,11 +432,6 @@ void ProAnalysis::interactive()
 	}
 }
 
-MatrixXd ProAnalysis::get_hessian()
-{
-	return hessian;
-}
-
 Matrix3d ProAnalysis::get_hessian(size_t i, size_t j)
 {
 	if (i < size_t(hessian.rows() / 3) && j < size_t(hessian.cols() / 3))
@@ -379,39 +448,6 @@ double ProAnalysis::get_hessian_s(size_t si, size_t sj)
 		return 0.0;
 }
 
-void ProAnalysis::write_hessian(string writepath)
-{
-	ofstream hessianf(writepath, ios::out);
-	if (hessianf.is_open())
-	{
-		hessianf << hessian.format(CleanFmt);
-		hessianf.close();
-		handle_info(format("Hessian matrix has been written to %1%.") % writepath);
-	}
-}
-
-void ProAnalysis::write_hessian_binary(string writepath)
-{
-	ofstream hessianf(writepath, ios::out | ios::binary);
-	if (hessianf.is_open())
-	{
-		double* H = new double(hessian.size());
-		for (size_t i = 0; i < hessian.rows(); ++i)
-		{
-			for (size_t j = 0; j < hessian.cols(); ++j)
-			{
-				// TODO
-			}
-		}
-	}
-
-}
-
-MatrixXd ProAnalysis::get_covariance()
-{
-	return covariance;
-}
-
 Matrix3d ProAnalysis::get_covariance(size_t i, size_t j)
 {
 	if (i < size_t(covariance.rows() / 3) && j < size_t(covariance.cols() / 3))
@@ -426,22 +462,6 @@ double ProAnalysis::get_covariance_s(size_t si, size_t sj)
 		return covariance(si, sj);
 	else
 		return 0.0;
-}
-
-void ProAnalysis::write_covariance(string writepath)
-{
-	ofstream covariancef(writepath, ios::out);
-	if (covariancef.is_open())
-	{
-		covariancef << covariance.format(CleanFmt);
-		covariancef.close();
-		handle_info(format("Covariance matrix has been written to %1%.") % writepath);
-	}
-}
-
-void ProAnalysis::write_covariance_binary(string writepath)
-{
-	// TODO
 }
 
 void ProAnalysis::show_LFmethod_detail()
@@ -564,6 +584,68 @@ void ProAnalysis::gen_free_energy()
 	}
 	else
 		handle_error("Lack necessary protein information.");
+}
+
+void ProAnalysis::write_matrix(MatrixXd mat, string writepath)
+{
+	ofstream matf(writepath, ios::out);
+	if (matf.is_open())
+	{
+		matf << mat.format(CleanFmt);
+		matf.close();
+		handle_info(format("Matrix has been written to %1%.") % writepath);
+	}
+	else
+		handle_warning(format("Can not open file %1%.") % writepath);
+}
+
+void ProAnalysis::write_matrix_binary(MatrixXd mat, string writepath)
+{
+	ofstream matf(writepath, ios::out | ios::binary);
+	if (matf.is_open())
+	{
+		size_t Msize = mat.size();
+		size_t Mrown = mat.rows();
+		size_t Mcoln = mat.cols();
+		double* M = new double[Msize];
+		for (size_t i = 0; i < Mrown; ++i)
+			for (size_t j = 0; j < Mcoln; ++j)
+				M[i * Mcoln + j] = mat(i, j);
+		matf.write((char *)&Msize, sizeof(size_t));
+		matf.write((char *)&Mrown, sizeof(size_t));
+		matf.write((char *)&Mcoln, sizeof(size_t));
+		matf.write((char *)&M[0], Msize * sizeof(double));
+		matf.close();
+		delete[] M;
+		handle_info(format("Matrix (binary data) has been written to %1%.") % writepath);
+	}
+	else
+		handle_warning(format("Can not open file %1%.") % writepath);
+}
+
+void ProAnalysis::read_matrix_binary(MatrixXd & mat, string fpath)
+{
+	ifstream matf(fpath, ios::in | ios::binary);
+	if (matf.is_open())
+	{
+		size_t Msize = 0;
+		size_t Mrown = 0;
+		size_t Mcoln = 0;
+		matf.read((char *)&Msize, sizeof(size_t));
+		matf.read((char *)&Mrown, sizeof(size_t));
+		matf.read((char *)&Mcoln, sizeof(size_t));
+		double* M = new double[Msize];
+		matf.read((char *)&M[0], Msize * sizeof(double));
+		cout << M[0] << endl;
+		mat = MatrixXd::Zero(Mrown, Mcoln);
+		for (size_t i = 0; i < Mrown; ++i)
+			for (size_t j = 0; j < Mcoln; ++j)
+				mat(i, j) = M[i * Mcoln + j];
+		matf.close();
+		delete[] M;
+	}
+	else
+		handle_warning(format("Can not open file %1%.") % fpath);
 }
 
 void ProAnalysis::switch_LFmethod(VectorXd & coeff, MatrixXd X, VectorXd Y)

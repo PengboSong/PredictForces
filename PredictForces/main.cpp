@@ -124,9 +124,17 @@ int main()
 		Complex = Pro(pdbf.string(), true, excl, spring_constant, cutoff);
 	}
 
-	ProAnalysis Cycle(Apo, Binding, Allostery, Complex);
+	// ProAnalysis Cycle(Apo, Binding, Allostery, Complex);
+	ProAnalysis Cycle(Apo, Binding, Allostery, Complex, "C:\\Users\\Pengbo Song\\Desktop\\0423.hessian", "C:\\Users\\Pengbo Song\\Desktop\\0423.covariance");
 
-	Cycle.interactive();
+	Cycle.write_hessian("C:\\Users\\Pengbo Song\\Desktop\\0423H1.txt");
+	Cycle.write_covariance("C:\\Users\\Pengbo Song\\Desktop\\0423G1.txt");
+	/*
+	Cycle.write_hessian_binary("C:\\Users\\Pengbo Song\\Desktop\\0423.hessian");
+	Cycle.write_covariance_binary("C:\\Users\\Pengbo Song\\Desktop\\0423.covariance");
+	*/
+
+	// Cycle.interactive();
 
 	return 0;
 }

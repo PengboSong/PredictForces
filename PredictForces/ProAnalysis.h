@@ -25,22 +25,49 @@ public:
 	ProAnalysis();
 	ProAnalysis(Pro apo, Pro binding);
 	ProAnalysis(Pro apo, Pro binding, Pro allostery, Pro complex);
+	ProAnalysis(Pro apo, Pro binding, Pro allostery, Pro complex, string hessian_path, string covariance_path);
 	~ProAnalysis();
 
 	void interactive_pocket(unsigned int mode);
 	void interactive();
 
-	MatrixXd get_hessian();
+	MatrixXd get_hessian()
+	{
+		return hessian;
+	}
 	Matrix3d get_hessian(size_t i, size_t j);
 	double get_hessian_s(size_t si, size_t sj);
-	void write_hessian(string writepath);
-	void write_hessian_binary(string writepath);
+	void write_hessian(string writepath)
+	{
+		write_matrix(hessian, writepath);
+	}
+	void write_hessian_binary(string writepath)
+	{
+		write_matrix_binary(hessian, writepath);
+	}
+	void read_hessian_binary(string fpath)
+	{
+		read_matrix_binary(hessian, fpath);
+	}
 
-	MatrixXd get_covariance();
+	MatrixXd get_covariance()
+	{
+		return covariance;
+	}
 	Matrix3d get_covariance(size_t i, size_t j);
 	double get_covariance_s(size_t si, size_t sj);
-	void write_covariance(string writepath);
-	void write_covariance_binary(string writepath);
+	void write_covariance(string writepath)
+	{
+		write_matrix(covariance, writepath);
+	}
+	void write_covariance_binary(string writepath)
+	{
+		write_matrix_binary(covariance, writepath);
+	}
+	void read_covariance_binary(string fpath)
+	{
+		read_matrix_binary(covariance, fpath);
+	}
 
 	void set_learning_step(double step)
 	{
@@ -208,6 +235,12 @@ public:
 	void gen_free_energy();
 
 private:
+	void write_matrix(MatrixXd mat, string writepath);
+
+	void write_matrix_binary(MatrixXd mat, string writepath);
+
+	void read_matrix_binary(MatrixXd & mat, string fpath);
+
 	void switch_LFmethod(VectorXd &coeff, MatrixXd X, VectorXd Y);
 
 	double calc_model_rmsd(bool flag, VectorXd pocket_force, VectorXd refcoord);
