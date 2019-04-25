@@ -210,6 +210,19 @@ void ProAnalysis::interactive_pocket(unsigned int mode)
 		cmd = para[0];
 		if (cmd == "back")
 			break;
+		else if (cmd == "help")
+		{
+			handle_hint("add <res-id>	Add <res-id> to current pocket.");
+			handle_hint("del <res-id>	Remove <res-id> from current pocket.");
+			handle_hint("gen-pocket <cutoff>	Set pocket cutoff to <cutoff>.");
+			handle_hint("show	Print residue IDs assigned to current pocket.");
+			handle_hint("gen-force	Fit pocket forces for current pocket.");
+			handle_hint("show-force	Print pocket forces paired with residue ID for current pocket.");
+			handle_hint("test	Calculate and print RMSD between original structure and structure predicted by pocket forces.");
+			handle_hint("origin-force	Print forces calculated from fitting real structures at pocket.");
+			handle_hint("all-origin-force	Print forces calculated from fitting real structures (from large to small).");
+			handle_hint("back	Back to main menu.");
+		}
 		else if (cmd == "add")
 		{
 			size_t resid = 0;
@@ -409,6 +422,16 @@ void ProAnalysis::interactive()
 		cmd = para[0];
 		if (cmd == "exit")
 			break;
+		else if (cmd == "help")
+		{
+			handle_hint("help	Print help information.");
+			handle_hint("pocketS	Configure pocket of binding state protein.");
+			handle_hint("pocketA	Configure pocket of allostery state protein.");
+			handle_hint("pocketAS	Configure pocket of complex state protein.");
+			handle_hint("energy	Calculate and print all free energy results.");
+			handle_hint("LFmethod	Set method for fitting pocket forces.");
+			handle_hint("exit	Exit interactive mode.");
+		}
 		else if (cmd == "pocketS")
 			interactive_pocket(0);
 		else if (cmd == "pocketA")
@@ -702,18 +725,15 @@ void ProAnalysis::test_pocket(bool flag, bool info, list<size_t> pocket, VectorX
 
 void ProAnalysis::show_pocket_force(bool flag, list<size_t> pocket, VectorXd pocket_force)
 {
-	vector<string> buf;
 	if (flag)
 	{
+		handle_result("Pocket force:");
 		for (list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
 		{
 			Vector3d resforce = Vector3d::Zero();
 			resforce << pocket_force(*it * 3), pocket_force(*it * 3 + 1), pocket_force(*it * 3 + 2);
-			buf.push_back(
-				(format("RES %1% FORCE %2$.4f") % (*it + 1) % calc_norm(resforce)).str()
-			);
+			handle_hint(format("RES %1% FORCE %2$.4f") % (*it + 1) % calc_norm(resforce));
 		}
-		handle_result("Pocket force:", buf);
 	}
 	else
 		handle_warning("The binding pocket domain is not specificed.");
@@ -908,29 +928,27 @@ void ProAnalysis::calc_energy_unknown(bool flag, double &proenergy, double &pock
 
 void ProAnalysis::print_energy_results()
 {
-	vector<string> buf;
-	buf.push_back((format("Free energy for binding state structure S: %1$.3f J/mol.") % S_energy).str());
-	buf.push_back((format("Pro: %1$.3f J/mol.") % S_proenergy).str());
-	buf.push_back((format("Pocket: %1$.3f J/mol.") % S_pocketenergy).str());
-	buf.push_back((format("Free energy for allostery state structure A: %1$.3f J/mol.") % A_energy).str());
-	buf.push_back((format("Pro: %1$.3f J/mol.") % A_proenergy).str());
-	buf.push_back((format("Pocket: %1$.3f J/mol.") % A_pocketenergy).str());
-	buf.push_back((format("Free energy for complex state structure AS: %1$.3f J/mol.") % AS_energy).str());
-	buf.push_back((format("Pro: %1$.3f J/mol.") % AS_proenergy).str());
-	buf.push_back((format("Pocket: %1$.3f J/mol.") % AS_pocketenergy).str());
-	buf.push_back((format("Change of free energy: : %1$.3f J/mol.") % ddG).str());
-	handle_result("Free energy results: ", buf);
+	handle_result("Free energy results: ");
+	handle_hint(format("Free energy for binding state structure S: %1$.3f J/mol.") % S_energy);
+	handle_hint(format("Pro: %1$.3f J/mol.") % S_proenergy);
+	handle_hint(format("Pocket: %1$.3f J/mol.") % S_pocketenergy);
+	handle_hint(format("Free energy for allostery state structure A: %1$.3f J/mol.") % A_energy);
+	handle_hint(format("Pro: %1$.3f J/mol.") % A_proenergy);
+	handle_hint(format("Pocket: %1$.3f J/mol.") % A_pocketenergy);
+	handle_hint(format("Free energy for complex state structure AS: %1$.3f J/mol.") % AS_energy);
+	handle_hint(format("Pro: %1$.3f J/mol.") % AS_proenergy);
+	handle_hint(format("Pocket: %1$.3f J/mol.") % AS_pocketenergy);
+	handle_hint(format("Change of free energy: : %1$.3f J/mol.") % ddG);
 
-	buf.clear();
-	buf.push_back((format("Free energy for binding state structure S: %1$.3f J/mol.") % S_predict_energy).str());
-	buf.push_back((format("Pro: %1$.3f J/mol.") % S_predict_proenergy).str());
-	buf.push_back((format("Pocket: %1$.3f J/mol.") % S_predict_pocketenergy).str());
-	buf.push_back((format("Free energy for allostery state structure A: %1$.3f J/mol.") % A_predict_energy).str());
-	buf.push_back((format("Pro: %1$.3f J/mol.") % A_predict_proenergy).str());
-	buf.push_back((format("Pocket: %1$.3f J/mol.") % A_predict_pocketenergy).str());
-	buf.push_back((format("Free energy for complex state structure AS: %1$.3f J/mol.") % AS_predict_energy).str());
-	buf.push_back((format("Pro: %1$.3f J/mol.") % AS_predict_proenergy).str());
-	buf.push_back((format("Pocket: %1$.3f J/mol.") % AS_predict_pocketenergy).str());
-	buf.push_back((format("Change of free energy: : %1$.3f J/mol.") % ddG_predict).str());
-	handle_result("All predict free energy results: ", buf);
+	handle_result("All predict free energy results: ");
+	handle_hint(format("Free energy for binding state structure S: %1$.3f J/mol.") % S_predict_energy);
+	handle_hint(format("Pro: %1$.3f J/mol.") % S_predict_proenergy);
+	handle_hint(format("Pocket: %1$.3f J/mol.") % S_predict_pocketenergy);
+	handle_hint(format("Free energy for allostery state structure A: %1$.3f J/mol.") % A_predict_energy);
+	handle_hint(format("Pro: %1$.3f J/mol.") % A_predict_proenergy);
+	handle_hint(format("Pocket: %1$.3f J/mol.") % A_predict_pocketenergy);
+	handle_hint(format("Free energy for complex state structure AS: %1$.3f J/mol.") % AS_predict_energy);
+	handle_hint(format("Pro: %1$.3f J/mol.") % AS_predict_proenergy);
+	handle_hint(format("Pocket: %1$.3f J/mol.") % AS_predict_pocketenergy);
+	handle_hint(format("Change of free energy: : %1$.3f J/mol.") % ddG_predict);
 }
