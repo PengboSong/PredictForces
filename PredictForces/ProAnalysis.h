@@ -4,353 +4,259 @@
 #include <list>
 #include <utility>
 #include <boost/format.hpp>
+#include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string.hpp>
 
 #include "handle_io.h"
 #include "Pro.h"
+#include "method.h"
 
-using namespace std;
 using namespace Eigen;
-using boost::format;
-using boost::lexical_cast;
-using boost::bad_lexical_cast;
-using boost::algorithm::trim;
+
+namespace filesys = boost::filesystem;
 
 constexpr double PI = 3.1415926535897932;
+
+enum Pockets : uint8_t {
+	POCKETS,	  // Binding Pocket
+	POCKETA,      // Allostery Pocket
+	POCKETAS	  // Complex Pocket
+};
+
+enum LFmethods : uint8_t {
+	BatchGradientDescent,
+	NormalEquation
+};
+
+typedef std::list<size_t> PocketList;
+
+typedef struct {
+	bool access_force = false;
+	PocketList members;
+	VectorXd force;
+} PocketInfo;
+
+
+typedef struct {
+	double pro = 0.0;
+	double pocket = 0.0;
+	double total = 0.0;
+} FreeEnergy;
+
+typedef struct {
+	bool empty = true;
+	bool withligand = false;
+	VectorXd procoord;
+	VectorXd fitprocoord;
+	VectorXd dist2ligand;
+	FreeEnergy G;
+} ProInfo;
+
+typedef struct {
+	bool preprocess = false;
+	double rmsd = 0.0;
+	double meanforce = 0.0;
+	double pearson = 0.0;
+	VectorXd displacement;
+	VectorXd force;
+	VectorXd equilibrium_coord;
+	MatrixXd distdiff;
+} ApoProInfo;
+
+typedef std::map<Pockets, PocketInfo> PocketContainer;
+typedef std::map<Pockets, ProInfo> ProInfoContainer;
+typedef std::map<Pockets, ApoProInfo> ApoProInfoContainer;
 
 class ProAnalysis
 {
 public:
 	ProAnalysis();
-	ProAnalysis(Pro apo, Pro binding);
 	ProAnalysis(Pro apo, Pro binding, Pro allostery, Pro complex);
-	ProAnalysis(Pro apo, Pro binding, Pro allostery, Pro complex, string hessian_path, string covariance_path);
 	~ProAnalysis();
 
-	void interactive_pocket(unsigned int mode);
+	void interactive_pocket(Pockets m);
+
 	void interactive();
 
-	MatrixXd get_hessian()
-	{
-		return hessian;
-	}
+	MatrixXd get_hessian() const { return hessian; }
+
 	Matrix3d get_hessian(size_t i, size_t j);
+
 	double get_hessian_s(size_t si, size_t sj);
-	void write_hessian(string writepath)
-	{
-		write_matrix(hessian, writepath);
-	}
-	void write_hessian_binary(string writepath)
-	{
-		write_matrix_binary(hessian, writepath);
-	}
-	void read_hessian_binary(string fpath)
-	{
-		read_matrix_binary(hessian, fpath);
-	}
 
-	MatrixXd get_covariance()
-	{
-		return covariance;
-	}
+	MatrixXd get_covariance() { return covariance; }
+
 	Matrix3d get_covariance(size_t i, size_t j);
-	double get_covariance_s(size_t si, size_t sj);
-	void write_covariance(string writepath)
-	{
-		write_matrix(covariance, writepath);
-	}
-	void write_covariance_binary(string writepath)
-	{
-		write_matrix_binary(covariance, writepath);
-	}
-	void read_covariance_binary(string fpath)
-	{
-		read_matrix_binary(covariance, fpath);
-	}
 
-	void set_learning_step(double step)
-	{
-		if (step > 0)
-			LEARNING_STEP = step;
-	}
-	void set_convergence(double limit)
-	{
-		if (limit > 0)
-			CONVERGENCE = limit;
-	}
-	void set_iteration_times(size_t N)
-	{
-		ITERATION_TIMES = N;
-	}
-	void set_random_times(size_t N)
-	{
-		RANDOM_TIMES = N;
-	}
+	double get_covariance_s(size_t si, size_t sj);
+
+	MatrixXd gen_full_distmat(VectorXd coord);
+	MatrixXd gen_all_distmat(VectorXd coord);
+	MatrixXd gen_small_distmat(VectorXd coord);
 
 	void show_LFmethod_detail();
 
-	void set_LFmethod(unsigned int mode);
+	void show_pocket(Pockets m) { show_pocket(pocket_members(m)); }
 
-	void choose_LFmethod();
+	void show_pocket_force(Pockets m) { show_pocket_force(pocket(m).access_force, pocket(m).members, pocket(m).force); }
 
-	list<size_t> get_pocketS() {
-		return pocketS;
-	}
-	list<size_t> get_pocketA() {
-		return pocketA;
-	}
-	list<size_t> get_pocketAS() {
-		return pocketAS;
-	}
+	void show_pro_pocket_force(Pockets m) { show_pro_pocket_force(pocket_members(m), apo_pro(m).force); }
 
-	void show_pocketS() {
-		show_pocket(pocketS);
-	}
-	void show_pocketA() {
-		show_pocket(pocketA);
-	}
-	void show_pocketAS() {
-		show_pocket(pocketAS);
-	}
+	void show_pro_all_force(Pockets m) { show_pro_all_force(apo_pro(m).force); }
 
-	void show_pocketS_force() {
-		show_pocket_force(has_pocketS_force_flag, pocketS, pocketS_force);
-	}
-	void show_pocketA_force() {
-		show_pocket_force(has_pocketA_force_flag, pocketA, pocketA_force);
-	}
-	void show_pocketAS_force() {
-		show_pocket_force(has_pocketAS_force_flag, pocketAS, pocketAS_force);
+	void test_pocket(Pockets m)
+	{
+		test_pocket(
+			pocket(m).access_force,
+			apo_pro(m).preprocess,
+			pocket(m).members,
+			apo_pro(m).displacement,
+			pocket(m).force,
+			pro(m).fitprocoord
+		);
+		calc_model_correlation(
+			pocket(m).access_force,
+			pocket(m).force,
+			apo_pro(m).displacement
+		);
 	}
 
-	void show_pro_pocketS_force() {
-		show_pro_pocket_force(pocketS, ES_force);
-	}
-	void show_pro_pocketA_force() {
-		show_pro_pocket_force(pocketA, EA_force);
-	}
-	void show_pro_pocketAS_force() {
-		show_pro_pocket_force(pocketAS, EAS_force);
+	bool in_pocket(Pockets m, size_t id) { return in_pocket(pocket_members(m), id); }
+
+	void add_to_pocket(Pockets m, size_t id) { add_to_pocket(pocket_members(m), id); }
+
+	void remove_from_pocket(Pockets m, size_t id) { remove_from_pocket(pocket_members(m), id); }
+
+	void gen_pocket(Pockets m, double cutoff)
+	{
+		gen_pocket(
+			proinfos.at(m).withligand,
+			pockets.at(m).members,
+			cutoff,
+			proinfos.at(m).dist2ligand
+		);
 	}
 
-	void show_proS_all_force() {
-		show_pro_all_force(ES_force);
-	}
-	void show_proA_all_force() {
-		show_pro_all_force(EA_force);
-	}
-	void show_proAS_all_force() {
-		show_pro_all_force(EAS_force);
-	}
-
-	void test_pocketS() {
-		test_pocket(has_pocketS_force_flag, ES_info, pocketS, pocketS_force, S_fitprocoord);
-		test_pocket(has_pocketS_force_flag, ES_info, pocketS, pocketS_force, AS_fitprocoord);
-	}
-	void test_pocketA() {
-		test_pocket(has_pocketA_force_flag, EA_info, pocketA, pocketA_force, A_fitprocoord);
-		test_pocket(has_pocketA_force_flag, EA_info, pocketA, pocketA_force, AS_fitprocoord);
-	}
-	void test_pocketAS() {
-		test_pocket(has_pocketAS_force_flag, EAS_info, pocketAS, pocketAS_force, AS_fitprocoord);
+	double calc_apo_pro_rmsd(Pockets m)
+	{
+		if (apo_pro(m).preprocess)
+			calc_model_rmsd(
+				pocket(m).access_force,
+				pocket(m).force,
+				pro(m).fitprocoord
+			);
 	}
 
-	bool in_pocketS(size_t id) {
-		return in_pocket(pocketS, id);
-	}
-	bool in_pocketA(size_t id) {
-		return in_pocket(pocketA, id);
-	}
-	bool in_pocketAS(size_t id) {
-		return in_pocket(pocketAS, id);
-	}
-
-	void add_to_pocketS(size_t id) {
-		add_to_pocket(pocketS, id);
-	}
-	void add_to_pocketA(size_t id) {
-		add_to_pocket(pocketA, id);
-	}
-	void add_to_pocketAS(size_t id) {
-		add_to_pocket(pocketAS, id);
-	}
-
-	void remove_from_pocketS(size_t id) {
-		remove_from_pocket(pocketS, id);
-	}
-	void remove_from_pocketA(size_t id) {
-		remove_from_pocket(pocketA, id);
-	}
-	void remove_from_pocketAS(size_t id) {
-		remove_from_pocket(pocketAS, id);
-	}
-
-	void gen_pocketS(double cutoff) {
-		if (!ProS.empty())
-			gen_pocket(ProS.has_ligand(), pocketS, cutoff, S_dist2ligand);
-	}
-	void gen_pocketA(double cutoff) {
-		if (!ProA.empty())
-			gen_pocket(ProA.has_ligand(), pocketA, cutoff, A_dist2ligand);
-	}
-	void gen_pocketAS(double cutoff) {
-		if (!ProAS.empty())
-			gen_pocket(ProAS.has_ligand(), pocketAS, cutoff, AS_dist2ligand);
-	}
-
-	double calc_ES_rmsd() {
-		if (ES_info)
-			calc_model_rmsd(has_pocketS_force_flag, pocketS_force, S_fitprocoord);
-	}
-	double calc_EA_rmsd() {
-		if (EA_info)
-			calc_model_rmsd(has_pocketA_force_flag, pocketA_force, A_fitprocoord);
-	}
-	double calc_EAS_rmsd() {
-		if (EAS_info)
-			calc_model_rmsd(has_pocketAS_force_flag, pocketAS_force, AS_fitprocoord);
-	}
-
-	void gen_pocketS_force() {
-		if (ES_info)
-			gen_pocket_force(has_pocketS_force_flag, pocketS_force, pocketS, ES_force, ES_displacement);
-	}
-	void gen_pocketA_force() {
-		if (EA_info)
-			gen_pocket_force(has_pocketA_force_flag, pocketA_force, pocketA, EA_force, EA_displacement);
-	}
-	void gen_pocketAS_force() {
-		if (EAS_info)
-		{
-			if (has_pocketS_force_flag)
-				gen_pocket_force(has_pocketAS_force_flag, pocketAS_force, pocketS_force, pocketAS, pocketS, EAS_force, EAS_displacement);
-			else if (has_pocketA_force_flag)
-				gen_pocket_force(has_pocketAS_force_flag, pocketAS_force, pocketA_force, pocketAS, pocketA, EAS_force, EAS_displacement);
-			else
-				gen_pocket_force(has_pocketAS_force_flag, pocketAS_force, pocketAS, EAS_force, EAS_displacement);
-		}
-	}
+	void gen_pocket_force(Pockets m);
 
 	void gen_free_energy();
 
+	void write_matrix(MatrixXd mat, std::string writepath);
+
+	void write_matrix_binary(MatrixXd mat, std::string writepath);
+
+	void read_matrix_binary(MatrixXd & mat, std::string fpath);
+
 private:
-	void write_matrix(MatrixXd mat, string writepath);
+	std::string write_path(std::string fname);
 
-	void write_matrix_binary(MatrixXd mat, string writepath);
+	PocketInfo & pocket(Pockets m) { return pockets.at(m); }
 
-	void read_matrix_binary(MatrixXd & mat, string fpath);
+	PocketList & pocket_members(Pockets m) { return pocket(m).members; }
+
+	ProInfo & pro(Pockets m) { return proinfos.at(m); }
+
+	ApoProInfo & apo_pro(Pockets m) { return apo_proinfos.at(m); }
+
+	void init_container();
+
+	void preprocess(Pockets m);
 
 	void switch_LFmethod(VectorXd &coeff, MatrixXd X, VectorXd Y);
 
-	double calc_model_rmsd(bool flag, VectorXd pocket_force, VectorXd refcoord);
+	double calc_model_rmsd(bool access, VectorXd pocket_force, VectorXd refcoord);
 
-	void show_pocket(list<size_t> pocket);
+	double calc_model_correlation(bool access, VectorXd pocket_force, VectorXd displacement);
 
-	void test_pocket(bool flag, bool info, list<size_t> pocket, VectorXd pocket_force, VectorXd refcoord);
+	double calc_correlation(VectorXd displacement, VectorXd new_displacement);
 
-	void show_pocket_force(bool flag, list<size_t> pocket, VectorXd pocket_force);
+	void show_pocket(PocketList pocket_members);
 
-	void show_pro_pocket_force(list<size_t> pocket, VectorXd pro_force);
+	void test_pocket(bool access, bool preprocess, PocketList pocket_members, VectorXd displacement, VectorXd pocket_force, VectorXd refcoord);
+
+	void show_pocket_force(bool access, PocketList pocket_members, VectorXd pocket_force);
+
+	void show_pro_pocket_force(PocketList pocket_members, VectorXd pro_force);
 
 	void show_pro_all_force(VectorXd pro_force);
 
-	bool in_pocket(list<size_t> pocket, size_t id);
+	bool in_pocket(PocketList pocket_members, size_t id);
 
-	void add_to_pocket(list<size_t> & pocket, size_t id);
+	void add_to_pocket(PocketList & pocket_members, size_t id);
 
-	void remove_from_pocket(list<size_t> & pocket, size_t id);
+	void remove_from_pocket(PocketList & pocket_members, size_t id);
 
-	void gen_pocket(bool has_ligand, list<size_t> & pocket, double cutoff, VectorXd dist2ligand);
+	void gen_pocket(bool has_ligand, PocketList & pocket_members, double cutoff, VectorXd dist2ligand);
 
-	void gen_pocket_force(bool & flag, VectorXd & pocket_force, list<size_t> pocket, VectorXd pro_force, VectorXd displacement);
+	void gen_pocket_force(bool & access, VectorXd & pocket_force, PocketList pocket_members, VectorXd pro_force, VectorXd displacement);
 
-	void gen_pocket_force(bool & flag, VectorXd & pocket_force, VectorXd fixed_force, list<size_t> pocket, list<size_t> fixed_pocket, VectorXd pro_force, VectorXd displacement);
+	void gen_pocket_force(bool & access, VectorXd & pocket_force, VectorXd fixed_force, PocketList pocket_members, PocketList fixed_pocket, VectorXd pro_force, VectorXd displacement);
 
-	void calc_energy_known(bool flag, double & proenergy, double & pocketenergy, double & totenergy, list<size_t> pocket, VectorXd pro_force, MatrixXd distmat, VectorXd displacement);
+	void calc_energy_known(bool access, FreeEnergy & energy, PocketList pocket_members, VectorXd pro_force, MatrixXd distmat, VectorXd displacement);
 
-	void calc_energy_unknown(bool flag, double & proenergy, double & pocketenergy, double & totenergy, VectorXd pocket_force);
+	void calc_energy_unknown(bool access, FreeEnergy & energy, VectorXd pocket_force, VectorXd equilibrium_coord);
+
+	void minimization(bool & flag, PocketList pocket_members, VectorXd fix_procoord, VectorXd & equilibrium_coord, VectorXd & pocket_force, BGDpara paras);
+
+	void minimization(bool & flag, VectorXd & equilibrium_coord, VectorXd & pocket_force, BGDpara paras);
+
+	void optimize_pocket_structure(Vector3d & vcenter, Vector3d & degrees, Matrix3Xd coord, MatrixXd distmat_0, MatrixXd distmat, MatrixXi contactmap, double k);
+
+	// Pack functions for convenience
+	void minimization_calc_energy(bool & flag, Pockets m);
+
+	void equilibrium_coord_rmsd(Pockets m);
 
 	void print_energy_results();
 
-	Pro ProE;
-	Pro ProS;
-	Pro ProA;
-	Pro ProAS;
+	Pro ProE, ProS, ProA, ProAS;
 
-	VectorXd S_fitprocoord;
-	VectorXd S_dist2ligand;
-	VectorXd pocketS_force;
-	double S_proenergy = 0.0;
-	double S_pocketenergy = 0.0;
-	double S_energy = 0.0;
-	double S_predict_proenergy = 0.0;
-	double S_predict_pocketenergy = 0.0;
-	double S_predict_energy = 0.0;
+	double ES_pearson;
+	double EA_pearson;
+	double EAS_pearson;
 
-	VectorXd A_fitprocoord;
-	VectorXd A_dist2ligand;
-	VectorXd pocketA_force;
-	double A_proenergy = 0.0;
-	double A_pocketenergy = 0.0;
-	double A_energy = 0.0;
-	double A_predict_proenergy = 0.0;
-	double A_predict_pocketenergy = 0.0;
-	double A_predict_energy = 0.0;
+	PocketContainer pockets;
 
-	VectorXd AS_fitprocoord;
-	VectorXd AS_dist2ligand;
-	VectorXd pocketAS_force;
-	double AS_proenergy = 0.0;
-	double AS_pocketenergy = 0.0;
-	double AS_energy = 0.0;
-	double AS_predict_proenergy = 0.0;
-	double AS_predict_pocketenergy = 0.0;
-	double AS_predict_energy = 0.0;
+	ProInfoContainer proinfos;
+
+	ApoProInfoContainer apo_proinfos;
 
 	MatrixXd hessian;
 	MatrixXd covariance;
 
+	VectorXd apo_procoord;
+
+	MatrixXd mprocoord;
+	
 	double ddG = 0.0;
 	double ddG_predict = 0.0;
-
-	bool ES_info = false;
-	VectorXd ES_displacement;
-	VectorXd ES_force;
-	double ES_average_force;
-	double ES_rmsd;
-
-	bool EA_info = false;
-	VectorXd EA_displacement;
-	VectorXd EA_force;
-	double EA_average_force;
-	double EA_rmsd;
-
-	bool EAS_info = false;
-	VectorXd EAS_displacement;
-	VectorXd EAS_force;
-	double EAS_average_force;
-	double EAS_rmsd;
-
-	list<size_t> pocketS;
-	list<size_t> pocketA;
-	list<size_t> pocketAS;
-
-	// Status
-	bool has_pocketS_force_flag = false;
-	bool has_pocketA_force_flag = false;
-	bool has_pocketAS_force_flag = false;
+	double ddG_deduce = 0.0;
+	double ddG_deduce1 = 0.0;
+	double ddG_deduce2 = 0.0;
 
 	// Matrix formats
 	IOFormat CleanFmt = IOFormat(4, 0, ", ", "\n", "[", "]");
 
 	// Multiple linear fitting method
-	unsigned int LFmethod_mode = 1;
-	map<unsigned int, string> LFmethods = { {0, "Normal Equation"}, {1, "Batch Gradient Descent"} };
+	LFmethods LFMETHOD = BatchGradientDescent;
 
 	// BGD parameters
-	double LEARNING_STEP = 1e-2;
-	double CONVERGENCE = 1e-7;
-	size_t ITERATION_TIMES = 1000000;
-	size_t RANDOM_TIMES = 1000;
+	BGDpara BGDparameters = { 1e-2, 1e-4, 1000000 };
+
+	double cutoff_intra = 9.0;
+	double k_intra = 10.0;
+	double pocket_cutoff = 4.5;
+
+	std::string workdir_path;
 };

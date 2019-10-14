@@ -130,7 +130,7 @@ double calc_norm(VectorXd vector)
 	return sqrt(v.pow(2).sum());
 }
 
-double calc_average_force(VectorXd force)
+double calc_average(VectorXd force)
 {
 	Map<Array3Xd> forcexyz(force.data(), 3, force.size() / 3);
 	VectorXd sqdist = forcexyz.pow(2).colwise().sum().sqrt();
@@ -148,9 +148,32 @@ MatrixXd gen_distmat(VectorXd coord)
 	return distmat;
 }
 
-list<size_t> gen_pocket(double cutoff, VectorXd dist2ligand)
+MatrixXd gen_differ(MatrixXd X, MatrixXd Y)
 {
-	list<size_t> pocket;
+	if (X.cols() == Y.cols() && X.rows() == Y.rows())
+	{
+		MatrixXd diffmat = MatrixXd::Zero(X.rows(), X.cols());
+		for (size_t i = 0; i < size_t(diffmat.rows()); i++)
+			for (size_t j = i; j < size_t(diffmat.cols()); j++)
+			{
+				if (Y(i, j) != 0)
+					diffmat(i, j) = X(i, j) - Y(i, j);
+			}
+		return diffmat;
+	}
+	else
+	{
+		handle_message(
+			MSG_WARNING,
+			"Can only generate a diff matrix for two matrixes with the same shape."
+		);
+		return MatrixXd();
+	}
+}
+
+std::list<size_t> gen_pocket(double cutoff, VectorXd dist2ligand)
+{
+	std::list<size_t> pocket;
 	if (cutoff > dist2ligand.minCoeff())
 	{
 		for (size_t i = 0; i < size_t(dist2ligand.size()); ++i)
@@ -158,78 +181,169 @@ list<size_t> gen_pocket(double cutoff, VectorXd dist2ligand)
 				pocket.push_back(i);
 	}
 	else
-		handle_error(
-			format("Given cutoff is too short. Minimum possible cutoff is %1$.2f.") % dist2ligand.minCoeff()
+		handle_message(
+			MSG_ERROR,
+			boost::format("Given cutoff is too short. Minimum possible cutoff is %1$.2f.") % dist2ligand.minCoeff()
 		);
 	return pocket;
 }
+
+Matrix3d euler_rotation_matrix(Vector3d degrees)
+{
+	Matrix3d rmat = Matrix3d::Zero();
+
+	double varphi = degrees[0], phi = degrees[1], theta = degrees[2];
+
+	double cos_varphi = cos(varphi), sin_varphi = sin(varphi);
+	double cos_phi = cos(phi), sin_phi = sin(phi);
+	double cos_theta = cos(theta), sin_theta = sin(theta);
+
+	rmat(0, 0) = cos_theta * cos_phi;
+	rmat(1, 0) = cos_theta * sin_phi;
+	rmat(2, 0) = -sin_theta;
+	rmat(1, 0) = sin_varphi * sin_theta * cos_phi - cos_varphi * sin_phi;
+	rmat(1, 1) = sin_varphi * sin_theta * sin_phi + cos_varphi * cos_phi;
+	rmat(1, 2) = sin_varphi * cos_theta;
+	rmat(2, 0) = cos_varphi * sin_theta * cos_phi + sin_varphi * sin_phi;
+	rmat(2, 1) = cos_varphi * sin_theta * sin_phi - sin_varphi * cos_phi;
+	rmat(2, 2) = cos_varphi * cos_theta;
+
+	return rmat;
+}
+
+Matrix3Xd coords_derivate(Matrix3Xd coord, MatrixXd distmat_0, MatrixXd distmat, MatrixXi contactmap, double k)
+{
+	Matrix3Xd dR = Matrix3Xd::Zero(3, coord.cols());
+	for (size_t i = 0; i < size_t(distmat_0.rows()); ++i)
+	{
+		Vector3d ri = coord.col(i);
+		for (size_t j = i + 1; j < size_t(distmat_0.cols()); ++j)
+		{
+			Vector3d rij = ri - coord.col(j);
+			double frac = 1 - distmat_0(i, j) / distmat(i, j);
+			if (contactmap(i, j) == 2 || contactmap(i, j) == 3)
+			{
+				dR(0, i) += k * frac * rij(0);
+				dR(1, i) += k * frac * rij(1);
+				dR(2, i) += k * frac * rij(2);
+			}
+		}
+	}
+	return dR;
+}
+
+Vector3d euler_degrees_derivative(Vector3d r, Vector3d dvdr, Vector3d degrees)
+{
+	double rx = r[0], ry = r[1], rz = r[2];
+	double dv_drx = dvdr[0], dv_dry = dvdr[1], dv_drz = dvdr[2];
+	double varphi = degrees[0], phi = degrees[1], theta = degrees[2];
+
+	double cos_varphi = cos(varphi), sin_varphi = sin(varphi);
+	double cos_phi = cos(phi), sin_phi = sin(phi);
+	double cos_theta = cos(theta), sin_theta = sin(theta);
+
+	double varphi_cymsz = cos_varphi * ry - sin_varphi * rz;
+	double varphi_syacz = sin_varphi * ry + cos_varphi * rz;
+
+	double drx_dvarphi = sin_theta * cos_phi * varphi_cymsz + sin_phi * varphi_syacz;
+	double dry_dvarphi = sin_theta * sin_phi * varphi_cymsz - cos_phi * varphi_syacz;
+	double drz_dvarphi = cos_theta * varphi_cymsz;
+
+	double drx_dphi = -cos_theta * sin_phi * rx - sin_theta * sin_phi * varphi_syacz - cos_phi * varphi_cymsz;
+	double dry_dphi = cos_theta * cos_phi * rx + sin_theta * cos_phi * varphi_syacz - sin_phi * varphi_cymsz;
+	double drz_dphi = 0.0;
+
+	double drx_dtheta = -cos_phi * sin_theta * rx + cos_phi * cos_theta * varphi_syacz;
+	double dry_dtheta = -sin_phi * sin_theta * rx + sin_phi * cos_theta * varphi_syacz;
+	double drz_dtheta = -cos_theta * rx - sin_theta * varphi_syacz;
+
+	double dv_dvarphi = dv_drx * drx_dvarphi + dv_dry * dry_dvarphi + dv_drz * drz_dvarphi;
+	double dv_dphi = dv_drx * drx_dphi + dv_dry * dry_dphi + dv_drz * drz_dphi;
+	double dv_dtheta = dv_drx * drx_dtheta + dv_dry * dry_dtheta + dv_drz * drz_dtheta;
+
+	Vector3d dDegv;
+	dDegv << dv_dvarphi, dv_dphi, dv_dtheta;
+	return dDegv;
+}
+
 
 void normal_equation(VectorXd &coeff, MatrixXd X, VectorXd Y)
 {
 	coeff = (X.transpose() * X).inverse() * X.transpose() * Y;
 }
 
-// Batch Gradient Descent
-void BGD(VectorXd &coeff, MatrixXd X, VectorXd Y, double learning_rate, double convergence, size_t iterations)
+void BGD(VectorXd &coeff, MatrixXd X, VectorXd Y, BGDpara paras, bool checkinf)
 {
 	size_t nfeature = coeff.size();
 	size_t nsample = Y.size();
-	double cost = 0.0;
-	double prev_cost = 0.0;
+
+	double step = paras.learning_rate;
+
+	double cost = 0.0, prev_cost = 0.0;
+
 	VectorXd gradient = VectorXd::Zero(nfeature);
 	VectorXd new_gradient = VectorXd::Zero(nfeature);
 	double gradient_product = 0.0, new_gradient_product = 0.0;
+
 	bool converge_flag = false;
-	bool inf_flag = false;
-	for (size_t k = 0; k < iterations; ++k)
+
+	for (size_t k = 0; k < paras.niteration; ++k)
 	{
+		handle_message(MSG_EMPTY, "*---*---*---*---*---*");
+		handle_message(
+			MSG_EMPTY,
+			boost::format("Step: %1d") % (k + 1)
+		);
+
 		cost = (X * coeff - Y).dot(X * coeff - Y) / 2 / nsample;
-		// cost = Y.dot(Y) / 2 / nsample;
-		handle_hint(boost::format("Cost: %1$.4f") % cost);
 
-		if (isinf(cost))
-		{
-			coeff -= learning_rate / nsample * ((X * coeff - Y).transpose() * X);
-			cost = (X * coeff - Y).dot(X * coeff - Y) / 2 / nsample;
+		handle_message(
+			MSG_EMPTY,
+			boost::format("Cost: %1$.4f") % cost
+		);
 
-			if (isinf(cost))
-			{
-				inf_flag = true;
-				handle_warning(
-					format("Reach infinity in %1% steps.") % k
-				);
-				break;
-			}
-
-			if (k > 0 && abs(cost - prev_cost) < convergence)
-			{
-				converge_flag = true;
-				break;
-			}
-			prev_cost = cost;
-		}
-
-		gradient = ((X * coeff - Y).transpose() * X).transpose() / nsample;
-		if (k > 0 && abs(cost - prev_cost) < convergence)
+		if (k > 0 && abs(cost - prev_cost) < paras.convergence)
 		{
 			converge_flag = true;
-			cout << "Gradient:" << gradient << endl;
+			handle_message(
+				MSG_EMPTY,
+				boost::format("Gradient: %1$.6f") % gradient
+			);
 			break;
 		}
 
+		handle_message(MSG_EMPTY, "*---*---*---*---*---*");
+
 		prev_cost = cost;
-		coeff -= learning_rate / nsample * ((X * coeff - Y).transpose() * X).transpose(); // ?right
+		gradient = ((X * coeff - Y).transpose() * X).transpose() / nsample;
+		gradient_product = gradient.dot(gradient);
+		coeff -= step / nsample * ((X * coeff - Y).transpose() * X).transpose();
 		new_gradient = ((X * coeff - Y).transpose() * X).transpose() / nsample;
 		new_gradient_product = new_gradient.dot(new_gradient);
-		gradient_product = gradient.dot(gradient);
-		if (new_gradient_product > gradient_product)
-			learning_rate /= 2;
+
+		if (new_gradient_product >= gradient_product)
+			step /= 2;
 		else if (new_gradient_product < gradient_product)
-			learning_rate *= 1.2;
+			step *= 1.5;
+
+		if (checkinf)
+		{
+			if (isinf<double>(cost))
+			{
+				handle_message(
+					MSG_WARNING,
+					boost::format("Reach infinity in %1% steps.") % (k + 1)
+				);
+				break;
+			}
+		}
 	}
 
 	if (!converge_flag)
-		handle_warning(
-			format("Do not converge in %1% steps.") % iterations
+	{
+		handle_message(
+			MSG_WARNING,
+			boost::format("BGD does not converge in %1% steps.") % paras.niteration
 		);
+	}
 }

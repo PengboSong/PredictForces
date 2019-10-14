@@ -1,39 +1,14 @@
 #include "ProAnalysis.h"
-#include "method.h"
 
 ProAnalysis::ProAnalysis()
 {
-}
-
-ProAnalysis::ProAnalysis(Pro apo, Pro binding)
-{
-	ProE = apo;
-	ProS = binding;
-
-	if (!ProE.empty())
-	{
-		hessian = ProE.gen_hessian(); // unit: J / mol
-		handle_info("Finish constructing Hessian matrix.");
-		covariance = ProE.gen_covariance(hessian); // unit: A^2 / mol
-		handle_info("Finish constructing Covariance matrix.");
-
-		if (!ProS.empty())
-		{
-			S_dist2ligand = ProS.get_dist2ligand();
-
-			S_fitprocoord = fitting(ProE.get_procoord(), ProS.get_procoord());
-			ES_displacement = calc_displacement(ProE.get_procoord(), S_fitprocoord);
-			ES_force = hessian * ES_displacement;
-			ES_average_force = calc_average_force(ES_force);
-			ES_rmsd = calc_rmsd(ES_displacement);
-			handle_result(format("RMSD from binding state PDB file: %1$.4f A.") % ES_rmsd);
-			ES_info = true;
-		}
-	}
+	init_container();
 }
 
 ProAnalysis::ProAnalysis(Pro apo, Pro binding, Pro allostery, Pro complex)
 {
+	init_container();
+
 	ProE = apo;
 	ProS = binding;
 	ProA = allostery;
@@ -41,141 +16,27 @@ ProAnalysis::ProAnalysis(Pro apo, Pro binding, Pro allostery, Pro complex)
 
 	if (!ProE.empty())
 	{
-		hessian = ProE.gen_hessian(); // unit: J / mol
-		handle_info("Finish constructing Hessian matrix.");
-		covariance = ProE.gen_covariance(hessian); // unit: A^2 / mol
-		handle_info("Finish constructing Covariance matrix.");
-
+		apo_procoord = ProE.get_procoord();
 		if (!ProS.empty())
 		{
 			if (ProE.get_resn() != ProS.get_resn())
-				handle_error("Apo state protein and binding state protein do not have equal residue numbers.");
+				handle_message(MSG_ERROR, "Apo state protein and binding state protein do not have equal residue numbers.");
 
-			S_dist2ligand = ProS.get_dist2ligand();
-
-			S_fitprocoord = fitting(ProE.get_procoord(), ProS.get_procoord());
-			handle_info("Fitting process succeed.");
-			ES_displacement = calc_displacement(ProE.get_procoord(), S_fitprocoord);
-			handle_info("Calculating displacement succeed.");
-			ES_force = hessian * ES_displacement; // unit: J A / mol
-			handle_info("Calculating force succeed.");
-			ES_average_force = calc_average_force(ES_force);
-			ES_rmsd = calc_rmsd(ES_displacement); // unit: A
-			handle_result(format("RMSD from binding state PDB file: %1$.4f A.") % EA_rmsd);
-
-			ES_info = true;
+			preprocess(POCKETS);
 		}
 		if (!ProA.empty())
 		{
 			if (ProE.get_resn() != ProA.get_resn())
-				handle_error("Apo state protein and allostery state protein do not have equal residue numbers.");
+				handle_message(MSG_ERROR, "Apo state protein and allostery state protein do not have equal residue numbers.");
 
-			A_dist2ligand = ProA.get_dist2ligand();
-
-			A_fitprocoord = fitting(ProE.get_procoord(), ProA.get_procoord());
-			handle_info("Fitting process succeed.");
-			EA_displacement = calc_displacement(ProE.get_procoord(), A_fitprocoord);
-			handle_info("Calculating displacement succeed.");
-			EA_force = hessian * EA_displacement; // unit: J A / mol
-			handle_info("Calculating force succeed.");
-			EA_average_force = calc_average_force(EA_force);
-			EA_rmsd = calc_rmsd(EA_displacement); // unit: A
-			handle_result(format("RMSD from allostery state PDB file: %1$.4f A.") % EA_rmsd);
-
-			EA_info = true;
+			preprocess(POCKETA);
 		}
 		if (!ProAS.empty())
 		{
-			if (ProE.get_resn() != ProA.get_resn())
-				handle_error("Apo state protein and complex state protein do not have equal residue numbers.");
+			if (ProE.get_resn() != ProAS.get_resn())
+				handle_message(MSG_ERROR, "Apo state protein and complex state protein do not have equal residue numbers.");
 
-			AS_dist2ligand = ProAS.get_dist2ligand();
-
-			AS_fitprocoord = fitting(ProE.get_procoord(), ProAS.get_procoord());
-			handle_info("Fitting process succeed.");
-			EAS_displacement = calc_displacement(ProE.get_procoord(), AS_fitprocoord);
-			handle_info("Calculating displacement succeed.");
-			EAS_force = hessian * EAS_displacement; // unit: J A / mol
-			handle_info("Calculating force succeed.");
-			EAS_average_force = calc_average_force(EAS_force);
-			EAS_rmsd = calc_rmsd(EAS_displacement); // unit: A
-			handle_result(format("RMSD from complex state PDB file: %1$.4f A.") % EAS_rmsd);
-
-			EAS_info = true;
-		}
-	}
-}
-
-ProAnalysis::ProAnalysis(Pro apo, Pro binding, Pro allostery, Pro complex, string hessian_path, string covariance_path)
-{
-	ProE = apo;
-	ProS = binding;
-	ProA = allostery;
-	ProAS = complex;
-
-	if (!ProE.empty())
-	{
-		read_hessian_binary(hessian_path);
-		handle_info("Finish reading Hessian matrix.");
-		read_covariance_binary(covariance_path);
-		handle_info("Finish reading Covariance matrix.");
-
-		if (!ProS.empty())
-		{
-			if (ProE.get_resn() != ProS.get_resn())
-				handle_error("Apo state protein and binding state protein do not have equal residue numbers.");
-
-			S_dist2ligand = ProS.get_dist2ligand();
-
-			S_fitprocoord = fitting(ProE.get_procoord(), ProS.get_procoord());
-			handle_info("Fitting process succeed.");
-			ES_displacement = calc_displacement(ProE.get_procoord(), S_fitprocoord);
-			handle_info("Calculating displacement succeed.");
-			ES_force = hessian * ES_displacement; // unit: J A / mol
-			handle_info("Calculating force succeed.");
-			ES_average_force = calc_average_force(ES_force);
-			ES_rmsd = calc_rmsd(ES_displacement); // unit: A
-			handle_result(format("RMSD from binding state PDB file: %1$.4f A.") % EA_rmsd);
-
-			ES_info = true;
-		}
-		if (!ProA.empty())
-		{
-			if (ProE.get_resn() != ProA.get_resn())
-				handle_error("Apo state protein and allostery state protein do not have equal residue numbers.");
-
-			A_dist2ligand = ProA.get_dist2ligand();
-
-			A_fitprocoord = fitting(ProE.get_procoord(), ProA.get_procoord());
-			handle_info("Fitting process succeed.");
-			EA_displacement = calc_displacement(ProE.get_procoord(), A_fitprocoord);
-			handle_info("Calculating displacement succeed.");
-			EA_force = hessian * EA_displacement; // unit: J A / mol
-			handle_info("Calculating force succeed.");
-			EA_average_force = calc_average_force(EA_force);
-			EA_rmsd = calc_rmsd(EA_displacement); // unit: A
-			handle_result(format("RMSD from allostery state PDB file: %1$.4f A.") % EA_rmsd);
-
-			EA_info = true;
-		}
-		if (!ProAS.empty())
-		{
-			if (ProE.get_resn() != ProA.get_resn())
-				handle_error("Apo state protein and complex state protein do not have equal residue numbers.");
-
-			AS_dist2ligand = ProAS.get_dist2ligand();
-
-			AS_fitprocoord = fitting(ProE.get_procoord(), ProAS.get_procoord());
-			handle_info("Fitting process succeed.");
-			EAS_displacement = calc_displacement(ProE.get_procoord(), AS_fitprocoord);
-			handle_info("Calculating displacement succeed.");
-			EAS_force = hessian * EAS_displacement; // unit: J A / mol
-			handle_info("Calculating force succeed.");
-			EAS_average_force = calc_average_force(EAS_force);
-			EAS_rmsd = calc_rmsd(EAS_displacement); // unit: A
-			handle_result(format("RMSD from complex state PDB file: %1$.4f A.") % EAS_rmsd);
-
-			EAS_info = true;
+			preprocess(POCKETAS);
 		}
 	}
 }
@@ -184,74 +45,134 @@ ProAnalysis::~ProAnalysis()
 {
 }
 
-void ProAnalysis::interactive_pocket(unsigned int mode)
+void ProAnalysis::init_container()
 {
-	string buf, cmd, label;
-	vector<string> para;
-	switch (mode)
+	PocketInfo pocketS, pocketA, pocketAS;
+	pockets[POCKETS] = pocketS;
+	pockets[POCKETA] = pocketA;
+	pockets[POCKETAS] = pocketAS;
+
+	ProInfo proinfoS, proinfoA, proinfoAS;
+	proinfos[POCKETS] = proinfoS;
+	proinfos[POCKETA] = proinfoA;
+	proinfos[POCKETAS] = proinfoAS;
+
+	ApoProInfo apo_proinfoS, apo_proinfoA, apo_proinfoAS;
+	apo_proinfos[POCKETS] = apo_proinfoS;
+	apo_proinfos[POCKETA] = apo_proinfoA;
+	apo_proinfos[POCKETAS] = apo_proinfoAS;
+}
+
+void ProAnalysis::preprocess(Pockets m)
+{
+	Pro* targetpro = &ProE;
+	std::string keyword;
+	switch (m)
 	{
-	case 0:
-		label = "S";
+	case POCKETS:
+		*targetpro = ProS;
+		keyword = "binding";
 		break;
-	case 1:
-		label = "A";
+	case POCKETA:
+		*targetpro = ProA;
+		keyword = "allostery";
 		break;
-	case 2:
-		label = "AS";
+	case POCKETAS:
+		*targetpro = ProAS;
+		keyword = "complex";
 		break;
+	}
+
+	pro(m).empty = false;
+	pro(m).withligand = targetpro->has_ligand();
+	pro(m).dist2ligand = targetpro->get_dist2ligand();
+	pro(m).procoord = targetpro->get_procoord();
+	gen_pocket(m, pocket_cutoff);
+	show_pocket(m);
+
+	size_t ndim = pocket_members(m).size() * 3;
+	VectorXd fixed_apo = VectorXd::Zero(ndim);
+	VectorXd fixed_holo = VectorXd::Zero(ndim);
+	VectorXd init_coord = ProE.get_procoord();
+	VectorXd holo_coord = targetpro->get_procoord();
+
+	size_t i = 0;
+	for (PocketList::iterator it = pocket_members(m).begin(); it != pocket_members(m).end(); ++it)
+	{
+		fixed_apo(i * 3) = init_coord(*it * 3);
+		fixed_apo(i * 3 + 1) = init_coord(*it * 3 + 1);
+		fixed_apo(i * 3 + 2) = init_coord(*it * 3 + 2);
+
+		fixed_holo(i * 3) = holo_coord(*it * 3);
+		fixed_holo(i * 3 + 1) = holo_coord(*it * 3 + 1);
+		fixed_holo(i * 3 + 2) = holo_coord(*it * 3 + 2);
+
+		++i;
+	}
+
+	pro(m).fitprocoord = fitting(fixed_apo, fixed_holo);
+	handle_message(MSG_INFO, "Fitting process succeed.");
+
+	apo_pro(m).displacement = calc_displacement(fixed_apo, pro(m).fitprocoord);
+	handle_message(MSG_INFO, "Calculating displacement succeed.");
+
+	apo_pro(m).rmsd = calc_rmsd(apo_pro(m).displacement);
+	handle_message(MSG_RESULT, boost::format("RMSD from %1% state PDB file: %2$.4f A.") % keyword % apo_pro(m).rmsd);
+
+	apo_pro(m).force = hessian * apo_pro(m).displacement;
+	handle_message(MSG_INFO, "Calculating force succeed.");
+
+	apo_pro(m).distdiff = gen_differ(targetpro->get_distmat(), ProE.get_distmat());
+	handle_message(MSG_INFO, "Constructing distance difference matrix succeed.");
+
+	apo_pro(m).preprocess = true;
+}
+
+void ProAnalysis::interactive_pocket(Pockets m)
+{
+	std::string buf, cmd, label, mode;
+	std::vector<std::string> para;
+
+	switch (m)
+	{
+	case POCKETS:
+		mode = "S";
+		break;
+	case POCKETA:
+		mode = "A";
+		break;
+	case POCKETAS:
+		mode = "AS";
+		break;
+	default:
+		mode = "Err";
 	}
 
 	while (true)
 	{
-		cout << '[' << mode << ']' << " >>> ";
-		getline(cin, buf);
-		trim(buf);
+		std::cout << '[' << mode << ']' << " >>> ";
+		std::getline(std::cin, buf);
+		boost::algorithm::trim(buf);
 		split(para, buf, boost::is_any_of(" "));
 		cmd = para[0];
 		if (cmd == "back")
 			break;
-		else if (cmd == "help")
-		{
-			handle_hint("add <res-id>	Add <res-id> to current pocket.");
-			handle_hint("del <res-id>	Remove <res-id> from current pocket.");
-			handle_hint("gen-pocket <cutoff>	Set pocket cutoff to <cutoff>.");
-			handle_hint("show	Print residue IDs assigned to current pocket.");
-			handle_hint("gen-force	Fit pocket forces for current pocket.");
-			handle_hint("show-force	Print pocket forces paired with residue ID for current pocket.");
-			handle_hint("test	Calculate and print RMSD between original structure and structure predicted by pocket forces.");
-			handle_hint("origin-force	Print forces calculated from fitting real structures at pocket.");
-			handle_hint("all-origin-force	Print forces calculated from fitting real structures (from large to small).");
-			handle_hint("back	Back to main menu.");
-		}
 		else if (cmd == "add")
 		{
 			size_t resid = 0;
 			bool convert_flag = true;
 			try
 			{
-				resid = lexical_cast<size_t>(para[1]) - 1;
+				resid = boost::lexical_cast<size_t>(para[1]) - 1;
 			}
-			catch (bad_lexical_cast)
+			catch (boost::bad_lexical_cast)
 			{
 				convert_flag = false;
-				handle_hint("No residue ID given. Please enter again.");
+				handle_message(MSG_EMPTY, "No residue ID given. Please enter again.");
 			}
 
 			if (convert_flag)
-			{
-				switch (mode)
-				{
-				case 0:
-					add_to_pocketS(resid);
-					break;
-				case 1:
-					add_to_pocketA(resid);
-					break;
-				case 2:
-					add_to_pocketAS(resid);
-					break;
-				}
-			}
+				add_to_pocket(m, resid);
 		}
 		else if (cmd == "del")
 		{
@@ -259,29 +180,16 @@ void ProAnalysis::interactive_pocket(unsigned int mode)
 			bool convert_flag = true;
 			try
 			{
-				resid = lexical_cast<size_t>(para[1]) - 1;
+				resid = boost::lexical_cast<size_t>(para[1]) - 1;
 			}
-			catch (bad_lexical_cast)
+			catch (boost::bad_lexical_cast)
 			{
 				convert_flag = false;
-				handle_hint("No residue ID given. Please enter again.");
+				handle_message(MSG_EMPTY, "No residue ID given. Please enter again.");
 			}
 
 			if (convert_flag)
-			{
-				switch (mode)
-				{
-				case 0:
-					remove_from_pocketS(resid);
-					break;
-				case 1:
-					remove_from_pocketA(resid);
-					break;
-				case 2:
-					remove_from_pocketAS(resid);
-					break;
-				}
-			}
+				remove_from_pocket(m, resid);
 		}
 		else if (cmd == "gen-pocket")
 		{
@@ -289,168 +197,74 @@ void ProAnalysis::interactive_pocket(unsigned int mode)
 			bool convert_flag = true;
 			try
 			{
-				cutoff = lexical_cast<double>(para[1]);
+				cutoff = boost::lexical_cast<double>(para[1]);
 			}
-			catch (bad_lexical_cast)
+			catch (boost::bad_lexical_cast)
 			{
 				convert_flag = false;
-				handle_hint("Illegal cutoff length given. Please enter again.");
+				handle_message(MSG_EMPTY, "Illegal cutoff length given. Please enter again.");
 			}
 
 			if (convert_flag)
-			{
-				switch (mode)
-				{
-				case 0:
-					gen_pocketS(cutoff);
-					break;
-				case 1:
-					gen_pocketA(cutoff);
-					break;
-				case 2:
-					gen_pocketAS(cutoff);
-					break;
-				}
-			}
+				gen_pocket(m, cutoff);
 		}
 		else if (cmd == "show")
 		{
-			switch (mode)
-			{
-			case 0:
-				show_pocketS();
-				break;
-			case 1:
-				show_pocketA();
-				break;
-			case 2:
-				show_pocketAS();
-				break;
-			}
+			show_pocket(m);
 		}
 		else if (cmd == "test")
 		{
-			switch (mode)
-			{
-			case 0:
-				test_pocketS();
-				break;
-			case 1:
-				test_pocketA();
-				break;
-			case 2:
-				test_pocketAS();
-				break;
-			}
+			test_pocket(m);
 		}
 		else if (cmd == "gen-force")
 		{
-			switch (mode)
-			{
-			case 0:
-				gen_pocketS_force();
-				break;
-			case 1:
-				gen_pocketA_force();
-				break;
-			case 2:
-				gen_pocketAS_force();
-				break;
-			}
+			gen_pocket_force(m);
 		}
 		else if (cmd == "show-force")
 		{
-			switch (mode)
-			{
-			case 0:
-				show_pocketS_force();
-				break;
-			case 1:
-				show_pocketA_force();
-				break;
-			case 2:
-				show_pocketAS_force();
-				break;
-			}
+			show_pocket_force(m);
 		}
 		else if (cmd == "origin-force")
 		{
-			switch (mode)
-			{
-			case 0:
-				show_pro_pocketS_force();
-				break;
-			case 1:
-				show_pro_pocketA_force();
-				break;
-			case 2:
-				show_pro_pocketAS_force();
-				break;
-			}
+			show_pro_pocket_force(m);
 		}
 		else if (cmd == "all-origin-force")
 		{
-			switch (mode)
-			{
-			case 0:
-				show_proS_all_force();
-				break;
-			case 1:
-				show_proA_all_force();
-				break;
-			case 2:
-				show_proAS_all_force();
-				break;
-			}
+			show_pro_all_force(m);
 		}
 		else
-			handle_hint("Unknown command.");
+		{
+			handle_message(MSG_EMPTY, "Unknown command.");
+		}
 		cmd.clear();
 	}
 }
 
 void ProAnalysis::interactive()
 {
-	string buf, cmd;
-	vector<string> para;
+	std::string buf, cmd;
+	std::vector<std::string> para;
 	while (true)
 	{
-		cout << ">>> ";
-		getline(cin, buf);
-		trim(buf);
+		std::cout << ">>> ";
+		std::getline(std::cin, buf);
+		boost::algorithm::trim(buf);
 		split(para, buf, boost::is_any_of(" "));
 		cmd = para[0];
 		if (cmd == "exit")
 			break;
-		else if (cmd == "help")
-		{
-			handle_hint("help	Print help information.");
-			handle_hint("pocketS	Configure pocket of binding state protein.");
-			handle_hint("pocketA	Configure pocket of allostery state protein.");
-			handle_hint("pocketAS	Configure pocket of complex state protein.");
-			handle_hint("energy	Calculate and print all free energy results.");
-			handle_hint("LFmethod	Set method for fitting pocket forces.");
-			handle_hint("exit	Exit interactive mode.");
-		}
 		else if (cmd == "pocketS")
-			interactive_pocket(0);
+			interactive_pocket(POCKETS);
 		else if (cmd == "pocketA")
-			interactive_pocket(1);
+			interactive_pocket(POCKETA);
 		else if (cmd == "pocketAS")
-			interactive_pocket(2);
+			interactive_pocket(POCKETAS);
 		else if (cmd == "energy")
 			gen_free_energy();
 		else if (cmd == "LFmethod")
-		{
-			choose_LFmethod();
 			show_LFmethod_detail();
-		}
-		else if (cmd == "LFpara")
-		{
-			// TODO;
-		}
 		else
-			handle_hint("Unknown command.");
+			handle_message(MSG_EMPTY, "Unknown command.");
 		cmd.clear();
 	}
 }
@@ -489,142 +303,224 @@ double ProAnalysis::get_covariance_s(size_t si, size_t sj)
 
 void ProAnalysis::show_LFmethod_detail()
 {
-	switch (LFmethod_mode)
+	switch (LFMETHOD)
 	{
-	case 0:
+	case NormalEquation:
 		// Normal Equation
-		handle_info("Multiple Linear Fitting using normal equation.");
+		handle_message(MSG_INFO, "Multiple Linear Fitting using normal equation.");
 		break;
-	case 1:
+	case BatchGradientDescent:
 		// Batch Gradient Descent
-		handle_info("Multiple Linear Fitting using batch gradient descent.");
-		handle_info(format("Using learning step %1$.2e") % LEARNING_STEP);
-		handle_info(format("Using convergence %1$.2e") % CONVERGENCE);
-		handle_info(format("Using maximum iteration times %1%") % ITERATION_TIMES);
-		handle_info(format("Using random times %1%") % RANDOM_TIMES);
+		handle_message(MSG_INFO, "Multiple Linear Fitting using batch gradient descent.");
+		handle_message(MSG_INFO, boost::format("Using learning step %1$.2e") % BGDparameters.learning_rate);
+		handle_message(MSG_INFO, boost::format("Using convergence %1$.2e") % BGDparameters.convergence);
+		handle_message(MSG_INFO, boost::format("Using maximum iteration times %1%") % BGDparameters.niteration);
 		break;
 	default:
-		handle_warning("Invalid LF method mode.");
+		handle_message(MSG_WARNING, "Invalid LF method mode.");
 	}
 }
 
-void ProAnalysis::set_LFmethod(unsigned int mode)
+void ProAnalysis::gen_pocket_force(Pockets m)
 {
-	if (LFmethods.find(mode) != LFmethods.end())
-		LFmethod_mode = mode;
+	if (apo_pro(m).preprocess)
+	{
+		if (m == POCKETAS)
+		{
+			if (pocket(POCKETS).access_force)
+			{
+				gen_pocket_force(
+					pocket(POCKETAS).access_force,
+					pocket(POCKETAS).force,
+					pocket(POCKETS).force,
+					pocket(POCKETAS).members,
+					pocket(POCKETS).members,
+					apo_pro(POCKETAS).force,
+					apo_pro(POCKETAS).displacement
+				);
+			}
+			else if (pocket(POCKETA).access_force)
+			{
+				gen_pocket_force(
+					pocket(POCKETAS).access_force,
+					pocket(POCKETAS).force,
+					pocket(POCKETA).force,
+					pocket(POCKETAS).members,
+					pocket(POCKETA).members,
+					apo_pro(POCKETAS).force,
+					apo_pro(POCKETAS).displacement
+				);
+			}
+			else
+			{
+				gen_pocket_force(
+					pocket(POCKETAS).access_force,
+					pocket(POCKETAS).force,
+					pocket(POCKETAS).members,
+					apo_pro(POCKETAS).force,
+					apo_pro(POCKETAS).displacement
+				);
+			}
+		}
+		else
+		{
+			gen_pocket_force(
+				pocket(m).access_force,
+				pocket(m).force,
+				pocket(m).members,
+				apo_pro(m).force,
+				apo_pro(m).displacement
+			);
+		}
+	}
 }
 
-void ProAnalysis::choose_LFmethod()
+void ProAnalysis::minimization_calc_energy(bool & flag, Pockets m)
 {
-	for (map<unsigned int, string>::iterator it = LFmethods.begin(); it != LFmethods.end(); ++it)
-		handle_hint(format("%2% - %1%") % it->first % it->second);
-	string buf;
-	cout << "Enter method id:";
-	cin >> buf;
-	set_LFmethod(lexical_cast<unsigned int>(buf));
+	minimization(
+		flag,
+		pocket(m).members,
+		pro(m).fitprocoord,
+		apo_pro(m).equilibrium_coord,
+		pocket(m).force,
+		BGDparameters
+	);
+	calc_energy_unknown(
+		pocket(m).access_force,
+		pro(m).G,
+		pocket(m).force,
+		apo_pro(m).equilibrium_coord
+	);
+}
+
+void ProAnalysis::equilibrium_coord_rmsd(Pockets m)
+{
+
+	VectorXd displacement_complex = apo_pro(m).equilibrium_coord - fitting(apo_pro(m).equilibrium_coord, pro(m).procoord);
+	double rmsd_complex = calc_rmsd(displacement_complex);
+	handle_message(MSG_RESULT, boost::format("RMSD with complex state PDB file: %1$.4f A.") % rmsd_complex);
+
+	VectorXd displacement_apo = fitting(apo_procoord, apo_pro(m).equilibrium_coord) - apo_procoord;
+	double rmsd_apo = calc_rmsd(displacement_apo);
+	handle_message(MSG_RESULT, boost::format("RMSD with apo state PDB file: %1$.4f A.") % rmsd_apo);
 }
 
 void ProAnalysis::gen_free_energy()
 {
-	if (ES_info && EA_info)
+	if (apo_pro(POCKETS).preprocess && apo_pro(POCKETA).preprocess)
 	{
-		calc_energy_known(has_pocketS_force_flag, S_proenergy, S_pocketenergy, S_energy, pocketS, ES_force, ProS.get_distmat(), ES_displacement);
-		calc_energy_unknown(has_pocketS_force_flag, S_predict_proenergy, S_predict_pocketenergy, S_predict_energy, pocketS_force);
+		bool minimization_status = false;
+		
+		minimization_calc_energy(minimization_status, POCKETS);
 
-		calc_energy_known(has_pocketA_force_flag, A_proenergy, A_pocketenergy, A_energy, pocketA, EA_force, ProA.get_distmat(), EA_displacement);
-		calc_energy_unknown(has_pocketA_force_flag, A_predict_proenergy, A_predict_pocketenergy, A_predict_energy, pocketA_force);
+		equilibrium_coord_rmsd(POCKETS);
 
-		pocketAS_force = pocketS_force + pocketA_force;
-		has_pocketAS_force_flag = true;
-		calc_energy_unknown(has_pocketAS_force_flag, AS_proenergy, AS_pocketenergy, AS_energy, pocketAS_force);
-		AS_predict_proenergy = AS_proenergy;
-		AS_predict_pocketenergy = AS_pocketenergy;
-		AS_predict_energy = AS_energy;
-		ddG = AS_energy - S_energy - A_energy;
-		ddG_predict = AS_predict_energy - S_predict_energy - A_predict_energy;
+		minimization_calc_energy(minimization_status, POCKETA);
+
+		equilibrium_coord_rmsd(POCKETA);
+
+		pocket(POCKETAS).force = pocket(POCKETS).force + pocket(POCKETA).force;
+		
+		minimization(minimization_status, apo_pro(POCKETAS).equilibrium_coord, pocket(POCKETAS).force, BGDparameters);
+		calc_energy_unknown(pocket(POCKETAS).access_force, pro(POCKETAS).G, pocket(POCKETAS).force, apo_pro(POCKETAS).equilibrium_coord);
+
+        ddG = pro(POCKETAS).G.total - pro(POCKETS).G.total - pro(POCKETA).G.total;
 
 		print_energy_results();
 	}
-	else if (EAS_info && ES_info)
+	else if ((apo_pro(POCKETS).preprocess || apo_pro(POCKETA).preprocess) && apo_pro(POCKETAS).preprocess)
 	{
-		calc_energy_known(has_pocketS_force_flag, S_proenergy, S_pocketenergy, S_energy, pocketS, ES_force, ProS.get_distmat(), ES_displacement);
-		calc_energy_unknown(has_pocketS_force_flag, S_predict_proenergy, S_predict_pocketenergy, S_predict_energy, pocketS_force);
-
-		calc_energy_known(has_pocketAS_force_flag, AS_proenergy, AS_pocketenergy, AS_energy, pocketAS, EAS_force, ProAS.get_distmat(), EAS_displacement);
-		calc_energy_unknown(has_pocketAS_force_flag, AS_predict_proenergy, AS_predict_pocketenergy, AS_predict_energy, pocketAS_force);
-
-		pocketA_force = VectorXd::Zero(pocketAS_force.size());
-		for (list<size_t>::iterator it = pocketAS.begin(); it != pocketAS.end(); ++it)
+		Pockets s;	// POCKET identifier for single pocket
+		Pockets as; // POCKET identifier for another pocket
+		if (apo_pro(POCKETS).preprocess)
 		{
-			if (!in_pocketS(*it))
-			{
-				add_to_pocketA(*it);
-				pocketA_force(*it * 3) = pocketAS_force(*it * 3);
-				pocketA_force(*it * 3 + 1) = pocketAS_force(*it * 3 + 1);
-				pocketA_force(*it * 3 + 2) = pocketAS_force(*it * 3 + 2);
-			}
+			s = POCKETS;
+			as = POCKETA;
 		}
-		has_pocketA_force_flag = true;
-
-		calc_energy_unknown(has_pocketA_force_flag, A_proenergy, A_pocketenergy, A_energy, pocketA_force);
-		A_predict_proenergy = A_proenergy;
-		A_predict_pocketenergy = A_pocketenergy;
-		A_predict_energy = A_energy;
-		ddG = AS_energy - S_energy - A_energy;
-		ddG_predict = AS_predict_energy - S_predict_energy - A_predict_energy;
-
-		print_energy_results();
-	}
-	else if (EAS_info && EA_info)
-	{
-		calc_energy_known(has_pocketA_force_flag, A_proenergy, A_pocketenergy, A_energy, pocketA, EA_force, ProA.get_distmat(), EA_displacement);
-		calc_energy_unknown(has_pocketA_force_flag, A_predict_proenergy, A_predict_pocketenergy, A_predict_energy, pocketA_force);
-
-		calc_energy_known(has_pocketAS_force_flag, AS_proenergy, AS_pocketenergy, AS_energy, pocketAS, EAS_force, ProAS.get_distmat(), EAS_displacement);
-		calc_energy_unknown(has_pocketAS_force_flag, AS_predict_proenergy, AS_predict_pocketenergy, AS_predict_energy, pocketAS_force);
-
-		pocketS_force = VectorXd::Zero(pocketAS_force.size());
-		for (list<size_t>::iterator it = pocketAS.begin(); it != pocketAS.end(); ++it)
+		else
 		{
-			if (!in_pocketA(*it))
-			{
-				add_to_pocketS(*it);
-				pocketS_force(*it * 3) = pocketAS_force(*it * 3);
-				pocketS_force(*it * 3 + 1) = pocketAS_force(*it * 3 + 1);
-				pocketS_force(*it * 3 + 2) = pocketAS_force(*it * 3 + 2);
-			}
+			s = POCKETA;
+			as = POCKETS;
 		}
-		has_pocketS_force_flag = true;
 
-		calc_energy_unknown(has_pocketS_force_flag, S_proenergy, S_pocketenergy, S_energy, pocketS_force);
-		S_predict_proenergy = S_proenergy;
-		S_predict_pocketenergy = S_pocketenergy;
-		S_predict_energy = S_energy;
-		ddG = AS_energy - S_energy - A_energy;
-		ddG_predict = AS_predict_energy - S_predict_energy - A_predict_energy;
+		bool minimization_status = false;
+
+		minimization_calc_energy(minimization_status, s);
+
+		minimization_calc_energy(minimization_status, POCKETAS);
+		
+		size_t i = 0, len = pocket_members(s).size() * 3;
+		VectorXd new_pocket_coord = VectorXd::Zero(len);
+		VectorXd new_apo_pocket_coord = VectorXd::Zero(len);
+		for (PocketList::iterator it = pocket_members(s).begin(); it != pocket_members(s).end(); ++it)
+		{
+			new_pocket_coord(i * 3) = apo_pro(POCKETAS).equilibrium_coord(*it * 3);
+			new_pocket_coord(i * 3 + 1) = apo_pro(POCKETAS).equilibrium_coord(*it * 3 + 1);
+			new_pocket_coord(i * 3 + 2) = apo_pro(POCKETAS).equilibrium_coord(*it * 3 + 2);
+
+			new_apo_pocket_coord(i * 3) = apo_procoord(*it * 3);
+			new_apo_pocket_coord(i * 3 + 1) = apo_procoord(*it * 3 + 1);
+			new_apo_pocket_coord(i * 3 + 2) = apo_procoord(*it * 3 + 2);
+			++i;
+		}
+
+		double gall = calc_rmsd(new_pocket_coord, fitting(new_apo_pocket_coord, new_pocket_coord));
+
+		pocket(as).force = pocket(POCKETAS).force - pocket(s).force;
+
+		minimization(minimization_status, apo_pro(as).equilibrium_coord, pocket(as).force, BGDparameters);
+		calc_energy_unknown(pocket(as).access_force, pro(as).G, pocket(as).force, apo_pro(as).equilibrium_coord);
+
+		ddG = pro(POCKETAS).G.total - pro(s).G.total - pro(as).G.total;
+
+		VectorXd s_pocket_displacement = apo_pro(POCKETS).equilibrium_coord - fitting(apo_pro(s).equilibrium_coord, pro(s).procoord);
+		double s_pocket_rmsd = calc_rmsd(s_pocket_displacement);
+		handle_message(MSG_RESULT, boost::format("RMSD from complex state PDB file: %1$.4f A.") % s_pocket_rmsd);
+
+		VectorXd AS_displacement = apo_pro(POCKETS).equilibrium_coord - fitting(apo_pro(POCKETAS).equilibrium_coord, pro(POCKETAS).procoord);
+		double AS_rmsd = calc_rmsd(AS_displacement);
+		handle_message(MSG_RESULT, boost::format("RMSD from complex state PDB file: %1$.4f A.") % AS_rmsd);
+
+		double s_pocket_pearson = calc_correlation(
+			fitting(apo_procoord, pro(s).procoord) - apo_procoord,
+			apo_pro(POCKETAS).equilibrium_coord - apo_procoord
+		);
+		handle_message(
+			MSG_RESULT,
+			boost::format("Pearson between real structure and structure calculated according to current pocket: %1$.4f") % s_pocket_pearson
+		);
+
+		double AS_pearson = calc_correlation(
+			fitting(apo_procoord, pro(POCKETAS).procoord) - apo_procoord,
+			apo_pro(POCKETAS).equilibrium_coord - apo_procoord
+		);
+		handle_message(
+			MSG_RESULT,
+			boost::format("Pearson between real structure and structure calculated according to current pocket: %1$.4f") % AS_pearson
+		);
 
 		print_energy_results();
 	}
 	else
-		handle_error("Lack necessary protein information.");
+		handle_message(MSG_ERROR, "Lack necessary protein information.");
 }
 
-void ProAnalysis::write_matrix(MatrixXd mat, string writepath)
+void ProAnalysis::write_matrix(MatrixXd mat, std::string writepath)
 {
-	ofstream matf(writepath, ios::out);
+	std::ofstream matf(writepath, std::ios::out);
 	if (matf.is_open())
 	{
 		matf << mat.format(CleanFmt);
 		matf.close();
-		handle_info(format("Matrix has been written to %1%.") % writepath);
+		handle_message(MSG_INFO, boost::format("Matrix has been written to %1%.") % writepath);
 	}
 	else
-		handle_warning(format("Can not open file %1%.") % writepath);
+		handle_message(MSG_WARNING, boost::format("Can not open file %1%.") % writepath);
 }
 
-void ProAnalysis::write_matrix_binary(MatrixXd mat, string writepath)
+void ProAnalysis::write_matrix_binary(MatrixXd mat, std::string writepath)
 {
-	ofstream matf(writepath, ios::out | ios::binary);
+	std::ofstream matf(writepath, std::ios::out | std::ios::binary);
 	if (matf.is_open())
 	{
 		size_t Msize = mat.size();
@@ -640,15 +536,15 @@ void ProAnalysis::write_matrix_binary(MatrixXd mat, string writepath)
 		matf.write((char *)&M[0], Msize * sizeof(double));
 		matf.close();
 		delete[] M;
-		handle_info(format("Matrix (binary data) has been written to %1%.") % writepath);
+		handle_message(MSG_INFO, boost::format("Matrix (binary data) has been written to %1%.") % writepath);
 	}
 	else
-		handle_warning(format("Can not open file %1%.") % writepath);
+		handle_message(MSG_WARNING, boost::format("Can not open file %1%.") % writepath);
 }
 
-void ProAnalysis::read_matrix_binary(MatrixXd & mat, string fpath)
+void ProAnalysis::read_matrix_binary(MatrixXd & mat, std::string fpath)
 {
-	ifstream matf(fpath, ios::in | ios::binary);
+	std::ifstream matf(fpath, std::ios::in | std::ios::binary);
 	if (matf.is_open())
 	{
 		size_t Msize = 0;
@@ -667,19 +563,27 @@ void ProAnalysis::read_matrix_binary(MatrixXd & mat, string fpath)
 		delete[] M;
 	}
 	else
-		handle_warning(format("Can not open file %1%.") % fpath);
+		handle_message(MSG_WARNING, boost::format("Can not open file %1%.") % fpath);
+}
+
+std::string ProAnalysis::write_path(std::string fname)
+{
+	filesys::path workdir = workdir_path;
+	return (workdir / fname).string();
 }
 
 void ProAnalysis::switch_LFmethod(VectorXd & coeff, MatrixXd X, VectorXd Y)
 {
-	switch (LFmethod_mode)
+	switch (LFMETHOD)
 	{
-	case 0:
+	case NormalEquation:
 		normal_equation(coeff, X, Y);
-	case 1:
-		BGD(coeff, X, Y, LEARNING_STEP, CONVERGENCE, ITERATION_TIMES);
+		break;
+	case BatchGradientDescent:
+		BGD(coeff, X, Y, BGDparameters);
+		break;
 	default:
-		BGD(coeff, X, Y, LEARNING_STEP, CONVERGENCE, ITERATION_TIMES);
+		BGD(coeff, X, Y, BGDparameters);
 	}
 }
 
@@ -687,140 +591,233 @@ double ProAnalysis::calc_model_rmsd(bool flag, VectorXd pocket_force, VectorXd r
 {
 	if (flag)
 	{
-		VectorXd mprocoord = (covariance / kB / Temp / Navo) * pocket_force  + ProE.get_procoord();
+		mprocoord = (covariance / kB / Temp / Navo) * pocket_force  + ProE.get_procoord();
 		VectorXd fitmprocoord = fitting(refcoord, mprocoord);
 		return calc_rmsd(refcoord, fitmprocoord);
 	}
 	else
 	{
-		handle_warning("Can not calculate model RMSD without pocket force generated. Call \"gen_pocket*_force\" function first.");
+		handle_message(MSG_WARNING, "Can not calculate model RMSD without pocket force generated. Call \"gen_pocket*_force\" function first.");
 		return 0.0;
 	}
 }
 
-void ProAnalysis::show_pocket(list<size_t> pocket)
+double ProAnalysis::calc_model_correlation(bool flag, VectorXd pocket_force, VectorXd displacement)
 {
-	string buf = "Pocket residues: ";
-	for (list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
+	if (flag)
 	{
-		buf += to_string(*it + 1) + " ";
-	}
+		mprocoord = (covariance / kB / Temp / Navo) * pocket_force + ProE.get_procoord();
+		VectorXd new_displacement = calc_displacement(ProE.get_procoord(), mprocoord);
 
-	handle_result(buf);
+		if (displacement.size() == new_displacement.size())
+		{
+			double xBar = calc_average(new_displacement);
+			double yBar = calc_average(displacement);
+			double varX = 0;
+			double varY = 0;
+			double SSR = 0;
+			double SST = 0;
+
+			size_t vlen = displacement.size() / 3;
+
+			VectorXd X = VectorXd::Zero(vlen);
+			VectorXd Y = VectorXd::Zero(vlen);
+			VectorXd diffX = VectorXd::Zero(vlen);
+			VectorXd diffY = VectorXd::Zero(vlen);
+
+			for (size_t i = 0; i < vlen; ++i)
+			{
+				X(i) = sqrt(pow(new_displacement(i * 3), 2) + pow(new_displacement(i * 3 + 1), 2) + pow(new_displacement(i * 3 + 2), 2));
+				Y(i) = sqrt(pow(displacement(i * 3), 2) + pow(displacement(i * 3 + 1), 2) + pow(displacement(i * 3 + 2), 2));
+				diffX(i) = X(i) - xBar;
+				diffY(i) = Y(i) - yBar;
+				SSR += (diffX(i) * diffY(i));
+				varX += pow(diffX(i), 2);
+				varY += pow(diffY(i), 2);
+			}
+				
+			SST = sqrt(varX * varY);
+			return SSR / SST;
+		}
+		else
+			return 0.0;
+	}
+	else
+	{
+		handle_message(MSG_WARNING, "Can not calculate model correlation without pocket force generated. Call \"gen_pocket*_force\" function first.");
+		return 0.0;
+	}
 }
 
-void ProAnalysis::test_pocket(bool flag, bool info, list<size_t> pocket, VectorXd pocket_force, VectorXd refcoord)
+double ProAnalysis::calc_correlation(VectorXd displacement, VectorXd new_displacement)
+{
+	if (displacement.size() == new_displacement.size())
+	{
+		double xBar = calc_average(new_displacement);
+		double yBar = calc_average(displacement);
+		double varX = 0;
+		double varY = 0;
+		double SSR = 0;
+		double SST = 0;
+
+		size_t vlen = displacement.size() / 3;
+
+		VectorXd X = VectorXd::Zero(vlen);
+		VectorXd Y = VectorXd::Zero(vlen);
+		VectorXd diffX = VectorXd::Zero(vlen);
+		VectorXd diffY = VectorXd::Zero(vlen);
+
+		for (size_t i = 0; i < vlen; ++i)
+		{
+			X(i) = sqrt(pow(new_displacement(i * 3), 2) + pow(new_displacement(i * 3 + 1), 2) + pow(new_displacement(i * 3 + 2), 2));
+			Y(i) = sqrt(pow(displacement(i * 3), 2) + pow(displacement(i * 3 + 1), 2) + pow(displacement(i * 3 + 2), 2));
+			diffX(i) = X(i) - xBar;
+			diffY(i) = Y(i) - yBar;
+			SSR += (diffX(i) * diffY(i));
+			varX += pow(diffX(i), 2);
+			varY += pow(diffY(i), 2);
+		}
+
+		SST = sqrt(varX * varY);
+		return SSR / SST;
+	}
+	else
+		return 0.0;
+}
+
+
+
+void ProAnalysis::show_pocket(PocketList pocket)
+{
+	std::string buf = "Pocket residues: ";
+	for (PocketList::iterator it = pocket.begin(); it != pocket.end(); ++it)
+	{
+		buf += std::to_string(*it + 1) + " ";
+	}
+
+	handle_message(MSG_RESULT, buf);
+}
+void ProAnalysis::test_pocket(bool flag, bool info, PocketList pocket, VectorXd displacement, VectorXd pocket_force, VectorXd refcoord)
 {
 	if (!pocket.empty() && flag)
 	{
 		show_pocket(pocket);
 		if (info)
-			handle_result(format("RMSD between real structure and structure calculated according to current pocket: %1% A.") % calc_model_rmsd(flag, pocket_force, refcoord));
+		{
+			handle_message(
+				MSG_RESULT,
+				boost::format("RMSD between real structure and structure calculated according to current pocket: %1% A.") % calc_model_rmsd(flag, pocket_force, refcoord)
+			);
+			handle_message(
+				MSG_RESULT,
+				boost::format("Pearson between real structure and structure calculated according to current pocket: %1% A.") % calc_model_correlation(flag, displacement, pocket_force)
+			);
+		}
 		else
-			handle_warning("Lack necessary protein information.");
+			handle_message(MSG_WARNING, "Lack necessary protein information.");
 	}
 	else
-		handle_warning("The binding pocket domain is not specificed.");
+		handle_message(MSG_WARNING, "The binding pocket domain is not specificed.");
 }
 
-void ProAnalysis::show_pocket_force(bool flag, list<size_t> pocket, VectorXd pocket_force)
+void ProAnalysis::show_pocket_force(bool access, PocketList pocket_members, VectorXd pocket_force)
 {
-	if (flag)
+	if (access)
 	{
-		handle_result("Pocket force:");
-		for (list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
+		handle_message(MSG_RESULT, "POCKET FORCE (PREDICT)");
+		handle_message(MSG_EMPTY, "*---*---*---*---*---*");
+		for (PocketList::const_iterator it = pocket_members.cbegin(); it != pocket_members.cend(); ++it)
 		{
 			Vector3d resforce = Vector3d::Zero();
 			resforce << pocket_force(*it * 3), pocket_force(*it * 3 + 1), pocket_force(*it * 3 + 2);
-			handle_hint(format("RES %1% FORCE %2$.4f") % (*it + 1) % calc_norm(resforce));
+			handle_message(MSG_EMPTY, boost::format("RES %1% FORCE %2$.4f") % (*it + 1) % calc_norm(resforce));
 		}
+		handle_message(MSG_EMPTY, "*---*---*---*---*---*");
 	}
 	else
-		handle_warning("The binding pocket domain is not specificed.");
+		handle_message(MSG_WARNING, "The binding pocket domain is not specificed.");
 }
 
-void ProAnalysis::show_pro_pocket_force(list<size_t> pocket, VectorXd pro_force)
+void ProAnalysis::show_pro_pocket_force(PocketList pocket, VectorXd pro_force)
 {
-	vector<string> buf;
-	for (list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
+	handle_message(MSG_RESULT, "POCKET FORCE (STRUCTURE)");
+	handle_message(MSG_EMPTY, "*---*---*---*---*---*");
+	for (PocketList::iterator it = pocket.begin(); it != pocket.end(); ++it)
 	{
 		Vector3d resforce = Vector3d::Zero();
 		resforce << pro_force(*it * 3), pro_force(*it * 3 + 1), pro_force(*it * 3 + 2);
-		buf.push_back(
-			(format("RES %1% FORCE %2$.4f") % (*it + 1) % calc_norm(resforce)).str()
-		);
+		handle_message(MSG_EMPTY, boost::format("RES %1% FORCE %2$.4f") % (*it + 1) % calc_norm(resforce));
 	}
-	handle_result("Pocket force (from structure):", buf);
+	handle_message(MSG_EMPTY, "*---*---*---*---*---*");
 }
 
 void ProAnalysis::show_pro_all_force(VectorXd pro_force)
 {
-	vector<string> buf;
-	vector<pair<size_t, double>> forces;
+	std::vector<std::string> buf;
+	std::vector<std::pair<size_t, double>> forces;
 	for (size_t i = 0; i < ProE.get_resn(); ++i)
 	{
 		Vector3d resforce = Vector3d::Zero();
 		resforce << pro_force(i * 3), pro_force(i * 3 + 1), pro_force(i * 3 + 2);
-		forces.push_back(make_pair(i, calc_norm(resforce)));
+		forces.push_back(std::make_pair(i, calc_norm(resforce)));
 	}
-	sort(forces.begin(), forces.end(), [](pair<size_t, double> a, pair<size_t, double> b) {
+	std::sort(forces.begin(), forces.end(), [](std::pair<size_t, double> a, std::pair<size_t, double> b) {
 		return a.second > b.second;
 	});
 
+	handle_message(MSG_RESULT, "PROTEIN FORCE");
+	handle_message(MSG_EMPTY, "*---*---*---*---*---*");
 	for (size_t i = 0; i < ProE.get_resn(); ++i)
-		buf.push_back(
-			(format("RES %1% FORCE %2$.4f") % (forces[i].first + 1) % forces[i].second).str()
-		);
-
-	handle_result("Protein force", buf);
+		handle_message(MSG_EMPTY, boost::format("RES %1% FORCE %2$.4f") % (forces[i].first + 1) % forces[i].second);
+	handle_message(MSG_EMPTY, "*---*---*---*---*---*");
 }
 
-bool ProAnalysis::in_pocket(list<size_t> pocket, size_t id)
+bool ProAnalysis::in_pocket(PocketList pocket, size_t id)
 {
 	bool find_element_flag = false;
-	for (list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
+	for (PocketList::iterator it = pocket.begin(); it != pocket.end(); ++it)
 		if (*it == id)
 			find_element_flag = true;
 	return find_element_flag;
 }
 
-void ProAnalysis::add_to_pocket(list<size_t> & pocket, size_t id)
+void ProAnalysis::add_to_pocket(PocketList & pocket, size_t id)
 {
 	if (id < ProE.get_resn())
 	{
 		if (in_pocket(pocket, id))
-			handle_info("Given residue ID already in pocket.");
+			handle_message(MSG_INFO, "Given residue ID already in pocket.");
 		else
 		{
 			pocket.push_back(id);
-			handle_info(format("Add residue %1% to pocket.") % (id + 1));
+			handle_message(MSG_INFO, boost::format("Add residue %1% to pocket.") % (id + 1));
 		}
 	}
 	else
-		handle_warning("Given residue ID out of range.");
+		handle_message(MSG_WARNING, "Given residue ID out of range.");
 }
 
-void ProAnalysis::remove_from_pocket(list<size_t> & pocket, size_t id)
+void ProAnalysis::remove_from_pocket(PocketList & pocket, size_t id)
 {
 	if (id < ProE.get_resn())
 	{
 		if (in_pocket(pocket, id))
 		{
-			for (list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
+			for (PocketList::iterator it = pocket.begin(); it != pocket.end(); ++it)
 				if (*it == id)
 				{
 					pocket.erase(it);
-					handle_info(format("Remove residue %1% from pocket.") % (id + 1));
+					handle_message(MSG_INFO, boost::format("Remove residue %1% from pocket.") % (id + 1));
 				}
 		}
 		else
-			handle_info("Given residue ID not in pocket. Can not erase it.");
+			handle_message(MSG_INFO, "Given residue ID not in pocket. Can not erase it.");
 	}
 	else
-		handle_warning("Given residue ID out of range.");
+		handle_message(MSG_WARNING, "Given residue ID out of range.");
 }
 
-void ProAnalysis::gen_pocket(bool has_ligand, list<size_t> &pocket, double cutoff, VectorXd dist2ligand)
+void ProAnalysis::gen_pocket(bool has_ligand, PocketList & pocket, double cutoff, VectorXd dist2ligand)
 {
 	if (has_ligand)
 	{
@@ -833,41 +830,73 @@ void ProAnalysis::gen_pocket(bool has_ligand, list<size_t> &pocket, double cutof
 					pocket.push_back(i);
 		}
 		else
-			handle_warning(format("Given cutoff is too short. Minimum possible cutoff is %1$.2f A.") % dist2ligand.minCoeff());
+			handle_message(
+				MSG_WARNING,
+				boost::format("Given cutoff is too short. Minimum possible cutoff is %1$.2f A.") % dist2ligand.minCoeff()
+			);
 	}
 	else
-		handle_warning("Can not find ligand information.");
+		handle_message(MSG_WARNING, "Can not find ligand information.");
 }
 
-void ProAnalysis::gen_pocket_force(bool & flag, VectorXd &pocket_force, list<size_t> pocket, VectorXd pro_force, VectorXd displacement)
+void ProAnalysis::gen_pocket_force(bool & flag, VectorXd & pocket_force, PocketList pocket, VectorXd pro_force, VectorXd displacement)
 {
-	pocket_force = VectorXd::Zero(covariance.rows());
-
+	pocket_force = VectorXd::Zero(covariance.rows());  
 	size_t ndim = pocket.size() * 3;
-	MatrixXd X = MatrixXd::Zero(covariance.rows(), ndim);
+	
+	MatrixXd X = MatrixXd::Zero(covariance.rows(), ndim);  // consider all residues for cost function.
 	VectorXd Y = displacement;
 	VectorXd coeff = VectorXd::Zero(ndim);
 
 	size_t i = 0;
-	for (list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
+	for (PocketList::iterator it = pocket.begin(); it != pocket.end(); ++it)  
 	{
 		X.col(3 * i) = covariance.col(*it * 3);
 		X.col(3 * i + 1) = covariance.col(*it * 3 + 1);
 		X.col(3 * i + 2) = covariance.col(*it * 3 + 2);
-
+		
 		coeff(i * 3) = pro_force(*it * 3);
 		coeff(i * 3 + 1) = pro_force(*it * 3 + 1);
 		coeff(i * 3 + 2) = pro_force(*it * 3 + 2);
 
 		++i;
 	}
+    
+	/*
+	MatrixXd Z = MatrixXd::Zero(covariance.rows(), ndim);  // consider only pocket residues for cost function.
+	VectorXd Y = VectorXd::Zero(ndim);
+	MatrixXd X = MatrixXd::Zero(ndim, ndim);
+	VectorXd coeff = VectorXd::Zero(ndim);
+
+	size_t i = 0;
+	for (PocketList::iterator it = pocket.begin(); it != pocket.end(); ++it)
+	{
+		Z.col(3 * i) = covariance.col(*it * 3);
+		Z.col(3 * i + 1) = covariance.col(*it * 3 + 1);
+		Z.col(3 * i + 2) = covariance.col(*it * 3 + 2);
+
+		X.row(i * 3) = Z.row(*it * 3);
+		X.row(i * 3 + 1) = Z.row(*it * 3 + 1);
+		X.row(i * 3 + 2) = Z.row(*it * 3 + 2);
+
+		coeff(i * 3) = pro_force(*it * 3);
+		coeff(i * 3 + 1) = pro_force(*it * 3 + 1);
+		coeff(i * 3 + 2) = pro_force(*it * 3 + 2);
+
+		Y(i * 3) = displacement(*it * 3);
+		Y(i * 3 + 1) = displacement(*it * 3 + 1);
+		Y(i * 3 + 2) = displacement(*it * 3 + 2);
+
+		++i;
+	}
+	*/
 
 	X /= (Navo * Temp * kB);
 
 	switch_LFmethod(coeff, X, Y);
 
 	i = 0;
-	for (list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
+	for (PocketList::iterator it = pocket.begin(); it != pocket.end(); ++it)
 	{
 		pocket_force(*it * 3) = coeff(i * 3);
 		pocket_force(*it * 3 + 1) = coeff(i * 3 + 1);
@@ -878,11 +907,11 @@ void ProAnalysis::gen_pocket_force(bool & flag, VectorXd &pocket_force, list<siz
 	flag = true;
 }
 
-void ProAnalysis::gen_pocket_force(bool & flag, VectorXd & pocket_force, VectorXd fixed_force, list<size_t> pocket, list<size_t> fixed_pocket, VectorXd pro_force, VectorXd displacement)
+void ProAnalysis::gen_pocket_force(bool & flag, VectorXd & pocket_force, VectorXd fixed_force, PocketList pocket, PocketList fixed_pocket, VectorXd pro_force, VectorXd displacement)
 {
 	VectorXd equiv_displacement = displacement - covariance * fixed_force / kB / Temp / Navo;
-	list<size_t> unfixed_pocket;
-	for (list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
+	PocketList unfixed_pocket;
+	for (PocketList::iterator it = pocket.begin(); it != pocket.end(); ++it)
 		if (!in_pocket(fixed_pocket, *it))
 			unfixed_pocket.push_back(*it);
 	gen_pocket_force(flag, pocket_force, unfixed_pocket, pro_force, equiv_displacement);
@@ -890,12 +919,60 @@ void ProAnalysis::gen_pocket_force(bool & flag, VectorXd & pocket_force, VectorX
 	flag = true;
 }
 
-void ProAnalysis::calc_energy_known(bool flag, double &proenergy, double &pocketenergy, double &totenergy, list<size_t> pocket, VectorXd pro_force, MatrixXd distmat, VectorXd displacement)
+MatrixXd ProAnalysis::gen_small_distmat(VectorXd coord)
+{
+	size_t resn = coord.size() / 3;
+	MatrixXd distmat = MatrixXd::Zero(resn, resn);
+	for (size_t i = 0; i < resn; i++)
+		for (size_t j = i + 1; j < resn; j++)
+			distmat(j, i) = distmat(i, j) = sqrt(pow(coord(3 * i) - coord(3 * j), 2) + pow(coord(3 * i + 1) - coord(3 * j + 1), 2) + pow(coord(3 * i + 2) - coord(3 * j + 2), 2));
+	return distmat;
+}
+
+MatrixXd ProAnalysis::gen_full_distmat(VectorXd coord)
+{
+	size_t resn = coord.size() / 3;
+	MatrixXd distmat = MatrixXd::Zero(3 * resn, 3 * resn);
+	for (size_t i = 0; i < resn; ++i)
+		for (size_t j = i + 1; j < resn; ++j)
+		{
+			double dist = sqrt(pow(coord(3 * i) - coord(3 * j), 2) + pow(coord(3 * i + 1) - coord(3 * j + 1), 2) + pow(coord(3 * i + 2) - coord(3 * j + 2), 2));
+			if (dist < cutoff_intra)
+			{
+				distmat(3 * i, 3 * j) = (coord(3 * i) - coord(3 * j));
+				distmat(3 * i + 1, 3 * j + 1) = (coord(3 * i + 1) - coord(3 * j + 1));
+				distmat(3 * i + 2, 3 * j + 2) = (coord(3 * i + 2) - coord(3 * j + 2));
+				distmat(3 * j, 3 * i) = -distmat(3 * i, 3 * j);
+				distmat(3 * j + 1, 3 * i + 1) = -distmat(3 * i + 1, 3 * j + 1);
+				distmat(3 * j + 2, 3 * i + 2) = -distmat(3 * i + 2, 3 * j + 2);
+			}
+		}
+	return distmat;
+}
+
+MatrixXd ProAnalysis::gen_all_distmat(VectorXd coord)
+{
+	size_t resn = coord.size() / 3;
+	MatrixXd distmat = MatrixXd::Zero(3 * resn, 3 * resn);
+	for (size_t i = 0; i < resn; ++i)
+		for (size_t j = i + 1; j < resn; ++j)
+		{
+				distmat(3 * i, 3 * j) = (coord(3 * i) - coord(3 * j));
+				distmat(3 * i + 1, 3 * j + 1) = (coord(3 * i + 1) - coord(3 * j + 1));
+				distmat(3 * i + 2, 3 * j + 2) = (coord(3 * i + 2) - coord(3 * j + 2));
+				distmat(3 * j, 3 * i) = -distmat(3 * i, 3 * j);
+				distmat(3 * j + 1, 3 * i + 1) = -distmat(3 * i + 1, 3 * j + 1);
+				distmat(3 * j + 2, 3 * i + 2) = -distmat(3 * i + 2, 3 * j + 2);
+		}
+	return distmat;
+}
+
+void ProAnalysis::calc_energy_known(bool flag, FreeEnergy & energy, PocketList pocket, VectorXd pro_force, MatrixXd distmat, VectorXd displacement)
 {
 	if (flag)
 	{
 		VectorXd force = VectorXd::Zero(pro_force.rows());
-		for (list<size_t>::iterator it = pocket.begin(); it != pocket.end(); ++it)
+		for (PocketList::iterator it = pocket.begin(); it != pocket.end(); ++it)
 		{
 			force(*it * 3) = pro_force(*it * 3);
 			force(*it * 3 + 1) = pro_force(*it * 3 + 1);
@@ -903,52 +980,71 @@ void ProAnalysis::calc_energy_known(bool flag, double &proenergy, double &pocket
 		}
 		ArrayXXd distdiffmat = distmat - ProE.get_distmat();
 		// Distance matrix is symmetric, so protein internal energy is 2 * 2 = 4 folds of real value
-		proenergy = (distdiffmat.pow(2) * ProE.get_kmat()).sum() / 4;
-		pocketenergy = -force.transpose() * displacement;
-		totenergy = proenergy + pocketenergy;
+		energy.pro = (distdiffmat.pow(2) * ProE.get_kmat()).sum() / 4;
+		energy.pocket = -force.transpose() * displacement;
+		energy.total = energy.pro + energy.pocket;
 	}
 	else
-		handle_warning("Can not calculate energy without pocket force generated. Call \"gen_pocket*_force\" function first.");
+		handle_message(MSG_WARNING, "Can not calculate energy without pocket force generated. Call \"gen_pocket*_force\" function first.");
 }
 
-void ProAnalysis::calc_energy_unknown(bool flag, double &proenergy, double &pocketenergy, double &totenergy, VectorXd pocket_force)
+void ProAnalysis::calc_energy_unknown(bool access, FreeEnergy & energy, VectorXd pocket_force, VectorXd equilibrium_coord)
 {
-	if (flag)
+	if (access)
 	{
-		VectorXd procoord = covariance / kB / Temp / Navo * pocket_force + ProE.get_procoord();
-		ArrayXXd distdiffmat = gen_distmat(procoord) - ProE.get_distmat();
-		// Distance matrix is symmetric, so protein internal energy is 2 * 2 = 4 folds of real value
-		proenergy = (distdiffmat.pow(2) * ProE.get_kmat()).sum() / 4;
-		pocketenergy = -pocket_force.transpose() * covariance / kB / Temp / Navo * pocket_force;
-		totenergy = proenergy + pocketenergy;
+		ArrayXXd distdiffmat = gen_small_distmat(equilibrium_coord) - ProE.get_distmat();		
+		energy.pro = (distdiffmat.pow(2) * ProE.get_kmat()).sum() / 4;
+		VectorXd displacement = equilibrium_coord - ProE.get_procoord();
+		energy.pocket = -pocket_force.transpose() * displacement;
+		energy.total = energy.pro + energy.pocket;
 	}
 	else
-		handle_warning("Can not calculate energy without pocket force generated. Call \"gen_pocket*_force\" function first.");
+		handle_message(MSG_WARNING, "Can not calculate energy without pocket force generated. Call \"gen_pocket*_force\" function first.");
 }
 
 void ProAnalysis::print_energy_results()
 {
-	handle_result("Free energy results: ");
-	handle_hint(format("Free energy for binding state structure S: %1$.3f J/mol.") % S_energy);
-	handle_hint(format("Pro: %1$.3f J/mol.") % S_proenergy);
-	handle_hint(format("Pocket: %1$.3f J/mol.") % S_pocketenergy);
-	handle_hint(format("Free energy for allostery state structure A: %1$.3f J/mol.") % A_energy);
-	handle_hint(format("Pro: %1$.3f J/mol.") % A_proenergy);
-	handle_hint(format("Pocket: %1$.3f J/mol.") % A_pocketenergy);
-	handle_hint(format("Free energy for complex state structure AS: %1$.3f J/mol.") % AS_energy);
-	handle_hint(format("Pro: %1$.3f J/mol.") % AS_proenergy);
-	handle_hint(format("Pocket: %1$.3f J/mol.") % AS_pocketenergy);
-	handle_hint(format("Change of free energy: : %1$.3f J/mol.") % ddG);
-
-	handle_result("All predict free energy results: ");
-	handle_hint(format("Free energy for binding state structure S: %1$.3f J/mol.") % S_predict_energy);
-	handle_hint(format("Pro: %1$.3f J/mol.") % S_predict_proenergy);
-	handle_hint(format("Pocket: %1$.3f J/mol.") % S_predict_pocketenergy);
-	handle_hint(format("Free energy for allostery state structure A: %1$.3f J/mol.") % A_predict_energy);
-	handle_hint(format("Pro: %1$.3f J/mol.") % A_predict_proenergy);
-	handle_hint(format("Pocket: %1$.3f J/mol.") % A_predict_pocketenergy);
-	handle_hint(format("Free energy for complex state structure AS: %1$.3f J/mol.") % AS_predict_energy);
-	handle_hint(format("Pro: %1$.3f J/mol.") % AS_predict_proenergy);
-	handle_hint(format("Pocket: %1$.3f J/mol.") % AS_predict_pocketenergy);
-	handle_hint(format("Change of free energy: : %1$.3f J/mol.") % ddG_predict);
+	handle_message(MSG_RESULT, "FREE ENERGY RESULTS");
+	handle_message(MSG_EMPTY, "*---*---*---*---*---*");
+	handle_message(
+		MSG_EMPTY,
+		boost::format("Free energy for binding state structure S: %1$.3f Kcal/mol.") % pro(POCKETS).G.total
+	);
+	handle_message(
+		MSG_EMPTY,
+		boost::format("Pro: %1$.3f Kcal/mol.") % pro(POCKETS).G.pro
+	);
+	handle_message(
+		MSG_EMPTY,
+		boost::format("Pocket: %1$.3f Kcal/mol.") % pro(POCKETS).G.pocket
+	);
+	handle_message(
+		MSG_EMPTY,
+		boost::format("Free energy for allostery state structure A: %1$.3f Kcal/mol.") % pro(POCKETA).G.total
+	);
+	handle_message(
+		MSG_EMPTY,
+		boost::format("Pro: %1$.3f Kcal/mol.") % pro(POCKETA).G.pro
+	);
+	handle_message(
+		MSG_EMPTY,
+		boost::format("Pocket: %1$.3f Kcal/mol.") % pro(POCKETA).G.pocket
+	);
+	handle_message(
+		MSG_EMPTY,
+		boost::format("Free energy for complex state structure AS: %1$.3f Kcal/mol.") % pro(POCKETAS).G.total
+	);
+	handle_message(
+		MSG_EMPTY,
+		boost::format("Pro: %1$.3f Kcal/mol.") % pro(POCKETAS).G.pro
+	);
+	handle_message(
+		MSG_EMPTY,
+		boost::format("Pocket: %1$.3f Kcal/mol.") % pro(POCKETAS).G.pocket
+	);
+	handle_message(
+		MSG_EMPTY,
+		boost::format("Change of free energy: : %1$.3f Kcal/mol.") % ddG
+	);
+	handle_message(MSG_EMPTY, "*---*---*---*---*---*");
 }

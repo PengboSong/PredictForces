@@ -4,26 +4,84 @@ Pro::Pro()
 {
 }
 
-Pro::Pro(string fpath, bool has_ligand_flag, vector<string> exclude, double k, double cutoff)
+Pro::Pro(std::string fpath, ProConfigs configs)
 {
-	with_ligand_flag = has_ligand_flag;
-	for (vector<string>::iterator it = exclude.begin(); it != exclude.end(); ++it)
-		exclres.emplace(*it);
-	k_default = k_inter = k_intra = k;
-	cutoff_inter = cutoff_intra = cutoff;
-	handle_info(format("Spring constant = %1$.1f J/(mol A^2).") % k);
-	handle_info(format("Cutoff = %1$.1f A.") % cutoff);
+	if (configs.ligandres.size() != 0)
+	{
+		with_ligand_flag = true;
+		for (std::vector<std::string>::iterator it = configs.ligandres.begin(); it != configs.ligandres.end(); ++it)
+			ligandres.emplace(*it);
+	}
+	if (configs.exclres.size() != 0)
+	{
+		for (std::vector<std::string>::iterator it = configs.exclres.begin(); it != configs.exclres.end(); ++it)
+			exclres.emplace(*it);
+	}
+
+	k_intra = configs.k_intra;
+	k_inter = configs.k_inter;
+	if (k_intra == k_inter)
+	{
+		handle_message(
+			MSG_INFO,
+			boost::format("Spring constant = %1$.1f Kcal/(mol A^2).") % k_intra
+		);
+	}
+	else
+	{
+		handle_message(
+			MSG_INFO,
+			boost::format("Intra Spring constant = %1$.1f Kcal/(mol A^2).") % k_intra
+		);
+		handle_message(
+			MSG_INFO,
+			boost::format("Inter Spring constant = %1$.1f Kcal/(mol A^2).") % k_inter
+		);
+	}
+
+	cutoff_intra = configs.cutoff_intra;
+	cutoff_inter = configs.cutoff_inter;
+	if (cutoff_intra == cutoff_inter)
+	{
+		handle_message(
+			MSG_INFO,
+			boost::format("Cutoff = %1$.1f A.") % cutoff_intra
+		);
+	}
+	else
+	{
+		handle_message(
+			MSG_INFO,
+			boost::format("Intra Cutoff = %1$.1f A.") % cutoff_intra
+		);
+		handle_message(
+			MSG_INFO,
+			boost::format("Inter Cutoff = %1$.1f A.") % cutoff_inter
+		);
+	}
+
 	read(fpath);
-	handle_info(format("Successfully loaded protein at path %1%") % fpath);
+	handle_message(
+		MSG_INFO,
+		boost::format("Successfully loaded protein at path %1%") % fpath
+	);
+
 	gen_coord();
 	gen_distmat();
 	gen_contact();
 	pairn = contact_pairs.size();
-	handle_info("Coordinate matrix, distance matrix, contact map have been generated for this protein.");
+	handle_message(
+		MSG_INFO,
+		"Coordinate matrix, distance matrix, contact map have been generated for this protein."
+	);
+
 	if (with_ligand_flag)
 	{
 		gen_dist2ligand();
-		handle_info("Residue distance to ligand has been calculated.");
+		handle_message(
+			MSG_INFO,
+			"Residue distance to ligand has been calculated."
+		);
 	}
 }
 
@@ -31,26 +89,21 @@ Pro::~Pro()
 {
 }
 
-bool Pro::has_ligand()
+void Pro::read(std::string fpath)
 {
-	return with_ligand_flag;
-}
-
-void Pro::read(string fpath)
-{
-	string line;
-	ifstream pdb(fpath);
+	std::string line;
+	std::ifstream pdb(fpath);
 	size_t proid = 0, proatomid = 0, ligandatomid = 0;
-	string prev_chain = "";
+	std::string prev_chain = "";
 	size_t prev_resid = 0;
 	if (pdb.is_open())
 	{
-		while (getline(pdb, line))
+		while (std::getline(pdb, line))
 		{
-			string record = read_record(line);
+			std::string record = read_record(line);
 			if (record == "ATOM" || record == "HETATM")
 			{
-				string resname = read_resname(line);
+				std::string resname = read_resname(line);
 
 				if (prores.find(resname) != prores.end())
 				{
@@ -73,7 +126,7 @@ void Pro::read(string fpath)
 						proatoms[proid].push_back(read_atom(line));
 					else
 					{
-						vector<AtomInfo> grp = { read_atom(line) };
+						AtomInfoList grp = { read_atom(line) };
 						proatoms[proid] = grp;
 					}
 
@@ -87,7 +140,7 @@ void Pro::read(string fpath)
 						ligand[resname].push_back(read_atom(line));
 					else
 					{
-						vector<AtomInfo> grp = { read_atom(line) };
+						AtomInfoList grp = { read_atom(line) };
 						ligand[resname] = grp;
 					}
 
@@ -101,7 +154,7 @@ void Pro::read(string fpath)
 						excl[resname].push_back(ex);
 					else
 					{
-						vector<AtomInfo> grp;
+						AtomInfoList grp;
 						grp.push_back(ex);
 						excl[resname] = grp;
 					}
@@ -115,7 +168,10 @@ void Pro::read(string fpath)
 		ligandatomn = ligandatomid;
 	}
 	else
-		handle_error(format("Unbale to open file %1%.") % fpath);
+		handle_message(
+			MSG_ERROR,
+			boost::format("Unbale to open file %1%.") % fpath
+		);
 }
 
 void Pro::gen_contact()
@@ -133,15 +189,15 @@ void Pro::gen_contact()
 			if (pro[i].chain == pro[j].chain && dist_ij < cutoff_intra)
 			{
 				contact_map(i, j) = contact_map(j, i) = 2;
-				contact_pairs.push_back(make_pair(i, j));
-				contact_pairs.push_back(make_pair(j, i));
+				contact_pairs.push_back(std::make_pair(i, j));
+				contact_pairs.push_back(std::make_pair(j, i));
 				kmat(i, j) = kmat(j, i) = k_intra;
 			}
 			else if (pro[i].chain != pro[j].chain && dist_ij < cutoff_inter)
 			{
 				contact_map(i, j) = contact_map(j, i) = 3;
-				contact_pairs.push_back(make_pair(i, j));
-				contact_pairs.push_back(make_pair(j, i));
+				contact_pairs.push_back(std::make_pair(i, j));
+				contact_pairs.push_back(std::make_pair(j, i));
 				kmat(i, j) = kmat(j, i) = k_inter;
 			}
 			else
@@ -164,9 +220,9 @@ void Pro::gen_coord()
 
 	ligandcoord = VectorXd::Zero(3 * ligandatomn);
 	size_t j = 0;
-	for (map<string, vector<AtomInfo>>::iterator it = ligand.begin(); it != ligand.end(); ++it)
+	for (std::map<std::string, AtomInfoList>::iterator it = ligand.begin(); it != ligand.end(); ++it)
 	{
-		for (vector<AtomInfo>::iterator iit = it->second.begin(); iit != it->second.end(); ++iit)
+		for (AtomInfoList::iterator iit = it->second.begin(); iit != it->second.end(); ++iit)
 		{
 			ligandcoord(3 * j) = iit->x;
 			ligandcoord(3 * j + 1) = iit->y;
@@ -175,11 +231,11 @@ void Pro::gen_coord()
 		}
 	}
 
-	for (map<size_t, vector<AtomInfo>>::iterator it = proatoms.begin(); it != proatoms.end(); ++it)
+	for (std::map<size_t, AtomInfoList>::iterator it = proatoms.begin(); it != proatoms.end(); ++it)
 	{
 		VectorXd rescoord = VectorXd::Zero(3 * it->second.size());
 		size_t k = 0;
-		for (vector<AtomInfo>::iterator iit = it->second.begin(); iit != it->second.end(); ++iit)
+		for (AtomInfoList::iterator iit = it->second.begin(); iit != it->second.end(); ++iit)
 		{
 			rescoord(3 * k) = iit->x;
 			rescoord(3 * k + 1) = iit->y;
@@ -196,7 +252,7 @@ MatrixXd Pro::gen_hessian()
 
 	if (gen_contact_flag)
 	{
-		for (vector<pair<size_t, size_t>>::iterator it = contact_pairs.begin(); it != contact_pairs.end(); ++it)
+		for (std::vector<ContactPair>::iterator it = contact_pairs.begin(); it != contact_pairs.end(); ++it)
 		{
 			size_t pi = it->first;
 			size_t pj = it->second;
@@ -204,7 +260,8 @@ MatrixXd Pro::gen_hessian()
 			double diffy = pro[pi].y - pro[pj].y;
 			double diffz = pro[pi].z - pro[pj].z;
 			double d = pow(diffx, 2) + pow(diffy, 2) + pow(diffz, 2);
-			double k = k_default;
+
+			double k = k_intra;
 			if (get_contact(pi, pj) == 2)
 				k = k_intra;
 			else if (get_contact(pi, pj) == 3)
@@ -254,13 +311,13 @@ MatrixXd Pro::gen_covariance(MatrixXd hessian)
 	VectorXd eigenvalues = eigensolver.eigenvalues();
 	VectorXd zero2inf_eigenvalues = eigenvalues;
 	MatrixXd eigenvectors = eigensolver.eigenvectors();
-	vector<size_t> zeromodes, nonzeromodes;
+	std::vector<size_t> zeromodes, nonzeromodes;
 	size_t zeromoden = calc_zero_modes(eigenvalues, zero2inf_eigenvalues);
 
 	if (zeromoden == 6)
 	{
 		MatrixXd U = ArrayXXd(eigenvectors.transpose()).colwise() / ArrayXd(zero2inf_eigenvalues);
-		covariance = (kB * Navo * Temp / k_default) * (eigenvectors * U);
+		covariance = (kB * Navo * Temp / k_intra) * (eigenvectors * U);
 				
 		/*
 		for (size_t i = 0; i < 3 * resn; ++i)
@@ -279,9 +336,23 @@ MatrixXd Pro::gen_covariance(MatrixXd hessian)
 		*/
 	}
 	else
-		handle_error(format("Hessian matrix has %1% zero modes. Please check it before constructing covariance matrix.") % zeromoden);
+		handle_message(
+			MSG_ERROR,
+			boost::format("Hessian matrix has %1% zero modes. Please check it before constructing covariance matrix.") % zeromoden
+		);
 
 	return covariance;
+}
+
+void Pro::gen_entropy(MatrixXd hessian, double &entropy)
+{
+	SelfAdjointEigenSolver<MatrixXd> eigensolver(hessian);
+	VectorXd eigenvalues = eigensolver.eigenvalues();
+	VectorXd zero2inf_eigenvalues = eigenvalues;
+	std::vector<size_t> zeromodes, nonzeromodes;
+	size_t zeromoden = calc_zero_modes(eigenvalues, zero2inf_eigenvalues);
+	for (size_t i = 0; i < eigenvalues.size(); ++i)
+		entropy -= kB * Temp * log(kB * Temp / h / sqrt(zero2inf_eigenvalues(i)));
 }
 
 void Pro::gen_distmat()
@@ -323,7 +394,7 @@ double Pro::distance(size_t i, size_t j)
 	return sqrt(pow(pro[i].x - pro[j].x, 2) + pow(pro[i].y - pro[j].y, 2) + pow(pro[i].z - pro[j].z, 2));
 }
 
-size_t Pro::calc_zero_modes(VectorXd eigenvalues, vector<size_t> *zeromodes, vector<size_t> *nonzeromodes)
+size_t Pro::calc_zero_modes(VectorXd eigenvalues, std::vector<size_t> *zeromodes, std::vector<size_t> *nonzeromodes)
 {
 	size_t count = 0;
 	for (size_t i = 0; i < size_t(eigenvalues.size()); i++)
@@ -350,149 +421,20 @@ size_t Pro::calc_zero_modes(VectorXd eigenvalues, VectorXd &zero2inf_eigenvalues
 	for (size_t i = 0; i < size_t(eigenvalues.size()); i++)
 		if (eigenvalues(i) == 0.0 || abs(eigenvalues(i)) < 1e-8)
 		{
-			zero2inf_eigenvalues(i) = numeric_limits<double>::infinity();
+			zero2inf_eigenvalues(i) = std::numeric_limits<double>::infinity();
 			++count;
 		}
 	return count;
 }
 
-bool Pro::has_res(size_t id)
-{
-	if (id < resn)
-		return true;
-	else
-		return false;
-}
-
-string Pro::get_resname(size_t id)
-{
-	if (id < resn)
-		return pro[id].resname;
-	else
-		return string();
-}
-
-string Pro::get_chain(size_t id)
-{
-	if (id < resn)
-		return pro[id].chain;
-	else
-		return string();
-}
-
-size_t Pro::get_resid(size_t id)
-{
-	if (id < resn)
-		return pro[id].resid;
-	else
-		return 0;
-}
-
-double Pro::get_x(size_t id)
-{
-	if (id < resn)
-		return pro[id].x;
-	else
-		return 0.0;
-}
-
-double Pro::get_y(size_t id)
-{
-	if (id < resn)
-		return pro[id].y;
-	else
-		return 0.0;
-}
-
-double Pro::get_z(size_t id)
-{
-	if (id < resn)
-		return pro[id].z;
-	else
-		return 0.0;
-}
-
-double Pro::get_bfactor(size_t id)
-{
-	if (id < resn)
-		return pro[id].bfactor;
-	else
-		return 0.0;
-}
-
-size_t Pro::get_resn()
-{
-	return resn;
-}
-
-int Pro::get_contact(size_t i, size_t j)
-{
-	if (i < resn && j < resn)
-		return contact_map(i, j);
-	else
-		return 0;
-}
-
 void Pro::show_contact_pairs()
 {
-	vector<string> buf;
-	for (vector<pair<size_t, size_t>>::iterator it = contact_pairs.begin(); it != contact_pairs.end(); ++it)
-		buf.push_back(
-			(format("(%1%, %2%)") % it->first % it->second).str()
-		);
-	handle_result("Contact pairs:", buf);
-}
-
-MatrixXi Pro::get_contact_map()
-{
-	return contact_map;
-}
-
-VectorXd Pro::get_procoord()
-{
-	return procoord;
-}
-
-VectorXd Pro::get_ligandcoord()
-{
-	return ligandcoord;
-}
-
-VectorXd Pro::get_dist2ligand()
-{
-	return dist2ligand;
-}
-
-VectorXd Pro::get_rescoord(size_t id)
-{
-	if (id < resn)
-		return rescoords[id];
-	else
-		return VectorXd();
-}
-
-size_t Pro::get_resatomn(size_t id)
-{
-	if (id < resn)
-		return rescoords[id].size() / 3;
-	else
-		return 0;
-}
-
-MatrixXd Pro::get_distmat()
-{
-	return distmat;
-}
-
-ArrayXXd Pro::get_kmat()
-{
-	return kmat;
-}
-
-bool Pro::empty()
-{
-	if (resn == 0)
-		return true;
-	else
-		return false;
+	std::string pairsbuf;
+	boost::format pairsformat("(%1%, %2%)");
+	for (std::vector<ContactPair>::iterator it = contact_pairs.begin(); it != contact_pairs.end(); ++it)
+		pairsbuf += (pairsformat % it->first % it->second).str();
+	handle_message(
+		MSG_RESULT,
+		"Contact pairs:" + pairsbuf
+	);
 }

@@ -70,11 +70,11 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>C:\public\boost;C:\public\eigen;$(IncludePath)</IncludePath>
+    <IncludePath>C:\public;C:\public\boost;C:\public\eigen;$(IncludePath)</IncludePath>
     <LibraryPath>C:\public\boost\stage\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>C:\public\boost;C:\public\eigen;$(IncludePath)</IncludePath>
+    <IncludePath>C:\public;C:\public\boost;C:\public\eigen;$(IncludePath)</IncludePath>
     <LibraryPath>C:\public\boost\stage\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -140,6 +140,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="handle_io.cpp" />
     <ClCompile Include="method.cpp" />
+    <ClCompile Include="minimization.cpp" />
     <ClCompile Include="Pro.cpp" />
     <ClCompile Include="ProAnalysis.cpp" />
     <ClCompile Include="read_pdb.cpp" />

@@ -50,5 +50,8 @@
     <ClCompile Include="handle_io.cpp">
       <Filter>source</Filter>
     </ClCompile>
+    <ClCompile Include="minimization.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

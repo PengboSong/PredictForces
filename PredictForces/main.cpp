@@ -1,4 +1,8 @@
+#include <fstream>
 #include <iostream>
+
+#include <nlohmann/json.hpp>
+
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
@@ -9,132 +13,195 @@
 #include "Pro.h"
 #include "ProAnalysis.h"
 
-using namespace std;
-using namespace boost::algorithm;
-using boost::lexical_cast;
-using boost::filesystem::path;
+namespace filesys = boost::filesystem;
+using json = nlohmann::json;
 
-vector<string> get_exclude_res()
+typedef struct
 {
-	string buf = "";
-	cout << "Enter residues to be excluded: ";
-	getline(cin, buf);
-	trim(buf);
-	vector<string> excl = {};
-	split(excl, buf, boost::is_any_of(" "));
-	return excl;
+	std::string pdb;
+	std::vector<std::string> ligandres;
+	std::vector<std::string> exclres;
+} AllosteryCycleState;
+
+typedef struct
+{
+	std::string workdir_path;
+	std::string text_tag;
+	std::string binary_tag;
+	std::string cache_tag;
+	AllosteryCycleState E;
+	AllosteryCycleState ES;
+	AllosteryCycleState EA;
+	AllosteryCycleState EAS;
+	double k;
+	double cutoff;
+} PredictForcesSettings;
+
+void read_settings(PredictForcesSettings &settings)
+{
+	json settings_json;
+
+	std::string settings_path = "settings.json";
+	if (filesys::is_regular_file(filesys::path(settings_path)))
+	{
+		std::ifstream file_settings(settings_path);
+		if (!file_settings.is_open())
+		{
+			handle_message(
+				MSG_ERROR,
+				boost::format("Can not open settings JSON file %1.") % settings_path
+			);
+		}
+		file_settings >> settings_json;
+		file_settings.close();
+
+		settings.workdir_path = settings_json["Workdir Path"].get<std::string>();
+		settings.text_tag = settings_json["Text Tag"].get<std::string>();
+		settings.binary_tag = settings_json["Binary Tag"].get<std::string>();
+		settings.cache_tag = settings_json["Cache Tag"].get<std::string>();
+
+		settings.E.pdb = settings_json["Apo State"].get<std::string>();
+		settings.ES.pdb = settings_json["Binding State"].get<std::string>();
+		settings.EA.pdb = settings_json["Allostery State"].get<std::string>();
+		settings.EAS.pdb = settings_json["Complex State"].get<std::string>();
+
+		for (auto& res : settings_json["Apo State Ligand Residues"])
+			settings.E.ligandres.push_back(res.get<std::string>());
+		for (auto& res : settings_json["Binding State Ligand Residues"])
+			settings.EA.ligandres.push_back(res.get<std::string>());
+		for (auto& res : settings_json["Allostery State Ligand Residues"])
+			settings.ES.ligandres.push_back(res.get<std::string>());
+		for (auto& res : settings_json["Complex State Ligand Residues"])
+			settings.EAS.ligandres.push_back(res.get<std::string>());
+
+		for (auto& res : settings_json["Apo State Exclude Residues"])
+			settings.E.exclres.push_back(res.get<std::string>());
+		for (auto& res : settings_json["Binding State Exclude Residues"])
+			settings.EA.exclres.push_back(res.get<std::string>());
+		for (auto& res : settings_json["Allostery State Exclude Residues"])
+			settings.ES.exclres.push_back(res.get<std::string>());
+		for (auto& res : settings_json["Complex State Exclude Residues"])
+			settings.EAS.exclres.push_back(res.get<std::string>());
+
+		settings.k = settings_json["k"].get<double>();
+		settings.cutoff = settings_json["Cutoff"].get<double>();
+	}
 }
 
-double get_spring_constant()
+Pro init_pro(AllosteryCycleStates s, PredictForcesSettings settings)
 {
-	string buf;
-	cout << "Enter spring contant: ";
-	getline(cin, buf);
-	trim(buf);
-	return lexical_cast<double>(buf);
-}
+	AllosteryCycleState state;
+	switch (s)
+	{
+	case ApoState:
+		state = settings.E;
+		break;
+	case BindingState:
+		state = settings.ES;
+		break;
+	case AllosteryState:
+		state = settings.EA;
+		break;
+	case ComplexState:
+		state = settings.EAS;
+		break;
+	default:
+		state = settings.E;
+	}
 
-double get_cutoff()
-{
-	string buf;
-	cout << "Enter cutoff: ";
-	getline(cin, buf);
-	trim(buf);
-	return lexical_cast<double>(buf);
+	std::string file_pdb = state.pdb;
+	if (!boost::algorithm::ends_with(file_pdb, ".pdb"))
+		file_pdb += ".pdb";
+	filesys::path pdb_path = filesys::path(settings.workdir_path) / file_pdb;
+
+	ProConfigs configs = {
+		settings.k,		  // Intra k
+		settings.k,		  // Inter k
+		settings.cutoff,  // Intra cutoff
+		settings.cutoff,  // Inter cutoff
+		state.ligandres,  // Ligand residues
+		state.exclres     // Exclude residues
+	};
+
+	return Pro(
+		pdb_path.string(),
+		configs
+	);
 }
 
 int main()
 {
-	string dataset = "", pro = "";
-	cout << "Enter dataset path: ";
-	getline(cin, dataset);
-	cout << "Enter protein family name: ";
-	getline(cin, pro);
-	path workdir = path(dataset) / pro;
+	PredictForcesSettings settings;
+	read_settings(settings);
+	filesys::path workdir = filesys::path(settings.workdir_path);
 
-	if (!boost::filesystem::is_directory(workdir))
-		handle_error(boost::format("Can not find directory %1%.") % workdir.string());
+	if (!filesys::is_directory(workdir))
+	{
+		handle_message(
+			MSG_ERROR,
+			boost::format("Can not find directory %1%.") % workdir.string()
+		);
+	}
 
-	Pro Apo;
-	Pro Binding;
-	Pro Allostery;
-	Pro Complex;
+	Pro ProApo;
+	Pro ProBinding;
+	Pro ProAllostery;
+	Pro ProComplex;
 
-	string aponame = "", bindingname = "", allosteryname = "", complexname = "";
-	path pdbf = "";
-	vector<string> excl = {};
-	double spring_constant = 1.0;
-	double cutoff = 9.0;
+	filesys::path pdbf;
 
-	cout << "Enter PDB name for apo state:";
-	getline(cin, aponame);
-	trim(aponame);
-	if (aponame.empty())
-		handle_error("Apo state must be loaded.");
+	if (settings.E.pdb.empty())
+	{
+		handle_message(
+			MSG_ERROR,
+			"Apo state structure must be loaded."
+		);
+	}
+	else
+		ProApo = init_pro(ApoState, settings);
+
+	if (!settings.ES.pdb.empty())
+		ProBinding = init_pro(BindingState, settings);
+
+	if (!settings.EA.pdb.empty())
+		ProAllostery = init_pro(AllosteryState, settings);
+
+	if (!settings.EAS.pdb.empty())
+		ProComplex = init_pro(ComplexState, settings);
+
+	ProAnalysis Cycle;
+	if (!settings.cache_tag.empty())
+	{
+		Cycle = ProAnalysis(
+			ProApo,
+			ProBinding,
+			ProAllostery,
+			ProComplex
+		);
+	}
 	else
 	{
-		if (!ends_with(aponame, ".pdb"))
-			aponame += ".pdb";
-		pdbf = workdir / aponame;
-		excl = get_exclude_res();
-		spring_constant = get_spring_constant();
-		cutoff = get_cutoff();
-		Apo = Pro(pdbf.string(), false, excl, spring_constant, cutoff);
+		Cycle = ProAnalysis(
+			ProApo,
+			ProBinding,
+			ProAllostery,
+			ProComplex
+		);
 	}
 
-	cout << "Enter PDB name for binding state:";
-	getline(cin, bindingname);
-	trim(bindingname);
-	if (!bindingname.empty())
+	if (!settings.text_tag.empty())
 	{
-		if (!boost::algorithm::ends_with(bindingname, ".pdb"))
-			bindingname += ".pdb";
-		pdbf = workdir / bindingname;
-		excl = get_exclude_res();
-		spring_constant = get_spring_constant();
-		cutoff = get_cutoff();
-		Binding = Pro(pdbf.string(), true, excl, spring_constant, cutoff);
+		Cycle.write_matrix(Cycle.get_hessian(), settings.text_tag + "_H.txt");
+		Cycle.write_matrix(Cycle.get_covariance(), settings.text_tag + "_G.txt");
 	}
 
-	cout << "Enter PDB name for allostery state:";
-	getline(cin, allosteryname);
-	trim(allosteryname);
-	if (!allosteryname.empty())
+	if (!settings.binary_tag.empty())
 	{
-		if (!boost::algorithm::ends_with(allosteryname, ".pdb"))
-			allosteryname += ".pdb";
-		pdbf = workdir / allosteryname;
-		excl = get_exclude_res();
-		spring_constant = get_spring_constant();
-		cutoff = get_cutoff();
-		Allostery = Pro(pdbf.string(), true, excl, spring_constant, cutoff);
+		Cycle.write_matrix_binary(Cycle.get_hessian(), settings.binary_tag + ".hessian");
+		Cycle.write_matrix_binary(Cycle.get_covariance(), settings.binary_tag + ".covariance");
 	}
 
-	cout << "Enter PDB name for complex state:";
-	getline(cin, complexname);
-	trim(complexname);
-	if (!complexname.empty())
-	{
-		if (!boost::algorithm::ends_with(complexname, ".pdb"))
-			complexname += ".pdb";
-		pdbf = workdir / complexname;
-		excl = get_exclude_res();
-		spring_constant = get_spring_constant();
-		cutoff = get_cutoff();
-		Complex = Pro(pdbf.string(), true, excl, spring_constant, cutoff);
-	}
-
-	// ProAnalysis Cycle(Apo, Binding, Allostery, Complex);
-	ProAnalysis Cycle(Apo, Binding, Allostery, Complex, "C:\\Users\\Pengbo Song\\Desktop\\0423.hessian", "C:\\Users\\Pengbo Song\\Desktop\\0423.covariance");
-
-	Cycle.write_hessian("C:\\Users\\Pengbo Song\\Desktop\\0423H1.txt");
-	Cycle.write_covariance("C:\\Users\\Pengbo Song\\Desktop\\0423G1.txt");
-	/*
-	Cycle.write_hessian_binary("C:\\Users\\Pengbo Song\\Desktop\\0423.hessian");
-	Cycle.write_covariance_binary("C:\\Users\\Pengbo Song\\Desktop\\0423.covariance");
-	*/
-
-	// Cycle.interactive();
+	Cycle.interactive();
 
 	return 0;
 }

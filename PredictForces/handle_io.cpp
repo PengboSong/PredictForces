@@ -1,67 +1,54 @@
 #include "handle_io.h"
 
-void handle_info(string info)
+std::string select_linemark(msgcode c)
 {
-	cout << "[Info] " << info << endl;
+	std::string linemark;
+	switch (c)
+	{
+	case MSG_EMPTY:
+		break;
+	case MSG_INFO:
+		linemark = "[Info] ";
+		break;
+	case MSG_WARNING:
+		linemark = "[Warning] ";
+		break;
+	case MSG_RESULT:
+		linemark = "[Result] ";
+		break;
+	case MSG_ERROR:
+		linemark = "[Error] ";
+		break;
+	default:
+		;
+	}
+	return linemark;
 }
 
-void handle_info(boost::format info)
+void handle_message(msgcode c, std::string msg)
 {
-	cout << "[Info] " << info << endl;
+	if (c == MSG_ERROR)
+	{
+		std::cin.get();
+		std::cout << select_linemark(c) << msg << std::endl;
+		std::cout << "Program interrupted. Press any key to exit...";
+		std::cin.get();
+		exit(1);
+	}
+	else
+		std::cout << select_linemark(c) << msg << std::endl;
 }
 
-void handle_warning(string info)
+void handle_message(msgcode c, boost::format msg)
 {
-	cout << "[Warning] " << info << endl;
-}
-
-void handle_warning(boost::format info)
-{
-	cout << "[Warning] " << info << endl;	
-}
-
-void handle_error(string info)
-{
-	cin.get();
-	cout << "[Error] " << info << endl;
-	cout << "Program interrupted. Press any key to exit...";
-	cin.get();
-	exit(1);
-}
-
-void handle_error(boost::format info)
-{
-	cin.get();
-	cout << "[Error] " << info << endl;
-	cout << "Program interrupted. Press any key to exit...";
-	cin.get();
-	exit(1);
-}
-
-void handle_result(string info)
-{
-	cout << "[Result] " << info << endl;
-}
-
-void handle_result(boost::format info)
-{
-	cout << "[Result] " << info << endl;
-}
-
-
-void handle_result(string info, vector<string> buf)
-{
-	cout << "[Result] " << info << endl;
-	for (vector<string>::iterator it = buf.begin(); it != buf.end(); ++it)
-		cout << *it << endl;
-}
-
-void handle_hint(string info)
-{
-	cout << info << endl;
-}
-
-void handle_hint(boost::format info)
-{
-	cout << info << endl;
+	if (c == MSG_ERROR)
+	{
+		std::cin.get();
+		std::cout << select_linemark(c) << msg << std::endl;
+		std::cout << "Program interrupted. Press any key to exit...";
+		std::cin.get();
+		exit(1);
+	}
+	else
+		std::cout << select_linemark(c) << msg << std::endl;
 }
