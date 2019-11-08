@@ -1,0 +1,20 @@
+{
+	"Workdir Path": "C:\\Users\\Pengbo Song\\Desktop\\dataset\\MetJ",
+	"Text Tag": "metj",
+	"Binary Tag": "metj_bin",
+	"Cache Tag": "metj_cache",
+	"Apo State": "1cmb",
+	"Apo State Ligand Residues": [ "" ],
+	"Apo State Exclude Residues": [ "HOH" ],
+	"Binding State": "",
+	"Binding State Ligand Residues": [ "" ],
+	"Binding State Exclude Residues": [ "" ],
+	"Allostery State": "1cmc",
+	"Allostery State Ligand Residues": [ "SAM" ],
+	"Allostery State Exclude Residues": [ "HOH" ],
+	"Complex State": "1cma",
+	"Complex State Ligand Residues": [ "SAM", "DA", "DT", "DC", "DG" ],
+	"Complex State Exclude Residues": [ "HOH" ],
+	"k": 1.0,
+	"Cutoff": 9.0
+}

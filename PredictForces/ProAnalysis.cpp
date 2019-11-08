@@ -17,6 +17,7 @@ ProAnalysis::ProAnalysis(Pro apo, Pro binding, Pro allostery, Pro complex)
 	if (!ProE.empty())
 	{
 		apo_procoord = ProE.get_procoord();
+		MinPocket = Minimization(BGDparameters, ProE.get_resn(), apo_procoord, ProE.get_kmat());
 		if (!ProS.empty())
 		{
 			if (ProE.get_resn() != ProS.get_resn())
@@ -56,11 +57,6 @@ void ProAnalysis::init_container()
 	proinfos[POCKETS] = proinfoS;
 	proinfos[POCKETA] = proinfoA;
 	proinfos[POCKETAS] = proinfoAS;
-
-	ApoProInfo apo_proinfoS, apo_proinfoA, apo_proinfoAS;
-	apo_proinfos[POCKETS] = apo_proinfoS;
-	apo_proinfos[POCKETA] = apo_proinfoA;
-	apo_proinfos[POCKETAS] = apo_proinfoAS;
 }
 
 void ProAnalysis::preprocess(Pockets m)
@@ -83,49 +79,39 @@ void ProAnalysis::preprocess(Pockets m)
 		break;
 	}
 
+	/* <--- Protein ---> */
+
 	pro(m).empty = false;
 	pro(m).withligand = targetpro->has_ligand();
 	pro(m).dist2ligand = targetpro->get_dist2ligand();
-	pro(m).procoord = targetpro->get_procoord();
+	pro(m).coord = targetpro->get_procoord();
+
+	pro(m).fitcoord = fitting(apo_procoord, pro(m).coord);
+	handle_message(MSG_INFO, "Fitting process succeed.");
+	pro(m).displacement = calc_displacement(apo_procoord, pro(m).coord);
+	handle_message(MSG_INFO, "Calculating displacement succeed.");
+	pro(m).rmsd = calc_rmsd(pro(m).displacement);
+	handle_message(MSG_RESULT, boost::format("RMSD between apo state and %1% state from PDB file: %2$.4f A.") % keyword % pro(m).rmsd);
+	
 	gen_pocket(m, pocket_cutoff);
 	show_pocket(m);
 
-	size_t ndim = pocket_members(m).size() * 3;
-	VectorXd fixed_apo = VectorXd::Zero(ndim);
-	VectorXd fixed_holo = VectorXd::Zero(ndim);
-	VectorXd init_coord = ProE.get_procoord();
-	VectorXd holo_coord = targetpro->get_procoord();
+	/* <--- Pocket ---> */
 
-	size_t i = 0;
-	for (PocketList::iterator it = pocket_members(m).begin(); it != pocket_members(m).end(); ++it)
-	{
-		fixed_apo(i * 3) = init_coord(*it * 3);
-		fixed_apo(i * 3 + 1) = init_coord(*it * 3 + 1);
-		fixed_apo(i * 3 + 2) = init_coord(*it * 3 + 2);
+	size_t pocketn = pocket_members(m).size() * 3;
+	VectorXd fixed_apo = VectorXd::Zero(pocketn), fixed_holo = VectorXd::Zero(pocketn);
 
-		fixed_holo(i * 3) = holo_coord(*it * 3);
-		fixed_holo(i * 3 + 1) = holo_coord(*it * 3 + 1);
-		fixed_holo(i * 3 + 2) = holo_coord(*it * 3 + 2);
+	grep_pocket_coord(fixed_apo, apo_procoord, pocket_members(m));
+	grep_pocket_coord(fixed_holo, pro(m).coord, pocket_members(m));
 
-		++i;
-	}
+	pocket(m).coord = fitting(fixed_apo, fixed_holo);
+	handle_message(MSG_INFO, "Fitting pocket process succeed.");
+	pocket(m).displacement = calc_displacement(fixed_apo, pocket(m).coord);
+	handle_message(MSG_INFO, "Calculating pocket displacement succeed.");
+	pocket(m).rmsd = calc_rmsd(pocket(m).displacement);
+	handle_message(MSG_RESULT, boost::format("RMSD from %1% state PDB file: %2$.4f A.") % keyword % pocket(m).rmsd);
 
-	pro(m).fitprocoord = fitting(fixed_apo, fixed_holo);
-	handle_message(MSG_INFO, "Fitting process succeed.");
-
-	apo_pro(m).displacement = calc_displacement(fixed_apo, pro(m).fitprocoord);
-	handle_message(MSG_INFO, "Calculating displacement succeed.");
-
-	apo_pro(m).rmsd = calc_rmsd(apo_pro(m).displacement);
-	handle_message(MSG_RESULT, boost::format("RMSD from %1% state PDB file: %2$.4f A.") % keyword % apo_pro(m).rmsd);
-
-	apo_pro(m).force = hessian * apo_pro(m).displacement;
-	handle_message(MSG_INFO, "Calculating force succeed.");
-
-	apo_pro(m).distdiff = gen_differ(targetpro->get_distmat(), ProE.get_distmat());
-	handle_message(MSG_INFO, "Constructing distance difference matrix succeed.");
-
-	apo_pro(m).preprocess = true;
+	pro(m).preprocess = true;
 }
 
 void ProAnalysis::interactive_pocket(Pockets m)
@@ -323,7 +309,7 @@ void ProAnalysis::show_LFmethod_detail()
 
 void ProAnalysis::gen_pocket_force(Pockets m)
 {
-	if (apo_pro(m).preprocess)
+	if (pro(m).preprocess)
 	{
 		if (m == POCKETAS)
 		{
@@ -335,8 +321,8 @@ void ProAnalysis::gen_pocket_force(Pockets m)
 					pocket(POCKETS).force,
 					pocket(POCKETAS).members,
 					pocket(POCKETS).members,
-					apo_pro(POCKETAS).force,
-					apo_pro(POCKETAS).displacement
+					pro(POCKETAS).force,
+					pro(POCKETAS).displacement
 				);
 			}
 			else if (pocket(POCKETA).access_force)
@@ -347,8 +333,8 @@ void ProAnalysis::gen_pocket_force(Pockets m)
 					pocket(POCKETA).force,
 					pocket(POCKETAS).members,
 					pocket(POCKETA).members,
-					apo_pro(POCKETAS).force,
-					apo_pro(POCKETAS).displacement
+					pro(POCKETAS).force,
+					pro(POCKETAS).displacement
 				);
 			}
 			else
@@ -357,8 +343,8 @@ void ProAnalysis::gen_pocket_force(Pockets m)
 					pocket(POCKETAS).access_force,
 					pocket(POCKETAS).force,
 					pocket(POCKETAS).members,
-					apo_pro(POCKETAS).force,
-					apo_pro(POCKETAS).displacement
+					pro(POCKETAS).force,
+					pro(POCKETAS).displacement
 				);
 			}
 		}
@@ -368,8 +354,8 @@ void ProAnalysis::gen_pocket_force(Pockets m)
 				pocket(m).access_force,
 				pocket(m).force,
 				pocket(m).members,
-				apo_pro(m).force,
-				apo_pro(m).displacement
+				pro(m).force,
+				pro(m).displacement
 			);
 		}
 	}
@@ -377,37 +363,28 @@ void ProAnalysis::gen_pocket_force(Pockets m)
 
 void ProAnalysis::minimization_calc_energy(bool & flag, Pockets m)
 {
-	minimization(
-		flag,
-		pocket(m).members,
-		pro(m).fitprocoord,
-		apo_pro(m).equilibrium_coord,
-		pocket(m).force,
-		BGDparameters
-	);
-	calc_energy_unknown(
-		pocket(m).access_force,
-		pro(m).G,
-		pocket(m).force,
-		apo_pro(m).equilibrium_coord
-	);
+	MinPocket.single_pocket(pocket(m).members, pocket(m).force, pocket(m).coord, pro(m).equilibrium_coord);
+	flag = MinPocket.convergence();
+	MinPocket.clear();
+	if (flag)
+		pocket(m).access_force = true;
+	calc_energy_unknown(pocket(m).access_force, pro(m).G, pocket(m).force, pro(m).equilibrium_coord);
 }
 
 void ProAnalysis::equilibrium_coord_rmsd(Pockets m)
 {
-
-	VectorXd displacement_complex = apo_pro(m).equilibrium_coord - fitting(apo_pro(m).equilibrium_coord, pro(m).procoord);
+	VectorXd displacement_complex = pro(m).equilibrium_coord - fitting(pro(m).equilibrium_coord, pro(m).coord);
 	double rmsd_complex = calc_rmsd(displacement_complex);
-	handle_message(MSG_RESULT, boost::format("RMSD with complex state PDB file: %1$.4f A.") % rmsd_complex);
+	handle_message(MSG_RESULT, boost::format("RMSD of equilibrium coordinates with initial state: %1$.4f A.") % rmsd_complex);
 
-	VectorXd displacement_apo = fitting(apo_procoord, apo_pro(m).equilibrium_coord) - apo_procoord;
+	VectorXd displacement_apo = fitting(apo_procoord, pro(m).equilibrium_coord) - apo_procoord;
 	double rmsd_apo = calc_rmsd(displacement_apo);
-	handle_message(MSG_RESULT, boost::format("RMSD with apo state PDB file: %1$.4f A.") % rmsd_apo);
+	handle_message(MSG_RESULT, boost::format("RMSD of equilibrium coordinates with apo state: %1$.4f A.") % rmsd_apo);
 }
 
 void ProAnalysis::gen_free_energy()
 {
-	if (apo_pro(POCKETS).preprocess && apo_pro(POCKETA).preprocess)
+	if (pro(POCKETS).preprocess && pro(POCKETA).preprocess)
 	{
 		bool minimization_status = false;
 		
@@ -421,18 +398,19 @@ void ProAnalysis::gen_free_energy()
 
 		pocket(POCKETAS).force = pocket(POCKETS).force + pocket(POCKETA).force;
 		
-		minimization(minimization_status, apo_pro(POCKETAS).equilibrium_coord, pocket(POCKETAS).force, BGDparameters);
-		calc_energy_unknown(pocket(POCKETAS).access_force, pro(POCKETAS).G, pocket(POCKETAS).force, apo_pro(POCKETAS).equilibrium_coord);
+		MinPocket.single_pocket(pocket(POCKETAS).force, pro(POCKETAS).equilibrium_coord);
+		minimization_status = MinPocket.convergence();
+		calc_energy_unknown(pocket(POCKETAS).access_force, pro(POCKETAS).G, pocket(POCKETAS).force, pro(POCKETAS).equilibrium_coord);
 
         ddG = pro(POCKETAS).G.total - pro(POCKETS).G.total - pro(POCKETA).G.total;
 
 		print_energy_results();
 	}
-	else if ((apo_pro(POCKETS).preprocess || apo_pro(POCKETA).preprocess) && apo_pro(POCKETAS).preprocess)
+	else if ((pro(POCKETS).preprocess || pro(POCKETA).preprocess) && pro(POCKETAS).preprocess)
 	{
 		Pockets s;	// POCKET identifier for single pocket
 		Pockets as; // POCKET identifier for another pocket
-		if (apo_pro(POCKETS).preprocess)
+		if (pro(POCKETS).preprocess)
 		{
 			s = POCKETS;
 			as = POCKETA;
@@ -447,34 +425,42 @@ void ProAnalysis::gen_free_energy()
 
 		minimization_calc_energy(minimization_status, s);
 
-		minimization_calc_energy(minimization_status, POCKETAS);
+		pocket(POCKETAS).force = pocket(s).force;
+
+		MinPocket.single_pocket_with_force(pocket(POCKETAS).members, pocket(POCKETAS).force, pocket(POCKETAS).coord, pro(POCKETAS).equilibrium_coord);
+		minimization_status = MinPocket.convergence();
+		MinPocket.clear();
+		if (minimization_status)
+			pocket(POCKETAS).access_force = true;
+		calc_energy_unknown(pocket(POCKETAS).access_force, pro(POCKETAS).G, pocket(POCKETAS).force, pro(POCKETAS).equilibrium_coord);
 		
 		size_t i = 0, len = pocket_members(s).size() * 3;
 		VectorXd new_pocket_coord = VectorXd::Zero(len);
 		VectorXd new_apo_pocket_coord = VectorXd::Zero(len);
-		grep_pocket_coord(new_pocket_coord, apo_pro(POCKETAS).equilibrium_coord, pocket_members(s));
+		grep_pocket_coord(new_pocket_coord, pro(POCKETAS).equilibrium_coord, pocket_members(s));
 		grep_pocket_coord(new_apo_pocket_coord, apo_procoord, pocket_members(s));
 
-		double gall = calc_rmsd(new_pocket_coord, fitting(new_apo_pocket_coord, new_pocket_coord));
+		double rmsd_full = calc_rmsd(new_pocket_coord, fitting(new_apo_pocket_coord, new_pocket_coord));
 
 		pocket(as).force = pocket(POCKETAS).force - pocket(s).force;
 
-		minimization(minimization_status, apo_pro(as).equilibrium_coord, pocket(as).force, BGDparameters);
-		calc_energy_unknown(pocket(as).access_force, pro(as).G, pocket(as).force, apo_pro(as).equilibrium_coord);
+		MinPocket.single_pocket(pocket(as).force, pro(as).equilibrium_coord);
+		minimization_status = MinPocket.convergence();
+		calc_energy_unknown(pocket(as).access_force, pro(as).G, pocket(as).force, pro(as).equilibrium_coord);
 
 		ddG = pro(POCKETAS).G.total - pro(s).G.total - pro(as).G.total;
 
-		VectorXd s_pocket_displacement = apo_pro(POCKETS).equilibrium_coord - fitting(apo_pro(s).equilibrium_coord, pro(s).procoord);
+		VectorXd s_pocket_displacement = pro(POCKETS).equilibrium_coord - fitting(pro(s).equilibrium_coord, pro(s).coord);
 		double s_pocket_rmsd = calc_rmsd(s_pocket_displacement);
 		handle_message(MSG_RESULT, boost::format("RMSD from complex state PDB file: %1$.4f A.") % s_pocket_rmsd);
 
-		VectorXd AS_displacement = apo_pro(POCKETS).equilibrium_coord - fitting(apo_pro(POCKETAS).equilibrium_coord, pro(POCKETAS).procoord);
+		VectorXd AS_displacement = pro(POCKETS).equilibrium_coord - fitting(pro(POCKETAS).equilibrium_coord, pro(POCKETAS).coord);
 		double AS_rmsd = calc_rmsd(AS_displacement);
 		handle_message(MSG_RESULT, boost::format("RMSD from complex state PDB file: %1$.4f A.") % AS_rmsd);
 
 		double s_pocket_pearson = calc_correlation(
-			fitting(apo_procoord, pro(s).procoord) - apo_procoord,
-			apo_pro(POCKETAS).equilibrium_coord - apo_procoord
+			fitting(apo_procoord, pro(s).coord) - apo_procoord,
+			pro(POCKETAS).equilibrium_coord - apo_procoord
 		);
 		handle_message(
 			MSG_RESULT,
@@ -482,8 +468,8 @@ void ProAnalysis::gen_free_energy()
 		);
 
 		double AS_pearson = calc_correlation(
-			fitting(apo_procoord, pro(POCKETAS).procoord) - apo_procoord,
-			apo_pro(POCKETAS).equilibrium_coord - apo_procoord
+			fitting(apo_procoord, pro(POCKETAS).coord) - apo_procoord,
+			pro(POCKETAS).equilibrium_coord - apo_procoord
 		);
 		handle_message(
 			MSG_RESULT,
@@ -575,40 +561,6 @@ void ProAnalysis::switch_LFmethod(VectorXd & coeff, MatrixXd X, VectorXd Y)
 		break;
 	default:
 		BGD(coeff, X, Y, BGDparameters);
-	}
-}
-
-void ProAnalysis::grep_pocket_coord(VectorXd & pocket_coord, VectorXd original_coord, PocketList pocket_members)
-{
-	size_t i = 0;
-	for (const size_t &id : pocket_members)
-	{
-		pocket_coord(i * 3) = original_coord(id * 3);
-		pocket_coord(i * 3 + 1) = original_coord(id * 3 + 1);
-		pocket_coord(i * 3 + 2) = original_coord(id * 3 + 2);
-		++i;
-	}
-}
-
-void ProAnalysis::modify_pocket_coord(VectorXd & coord, VectorXd replace_coord, PocketList pocket_members)
-{
-	size_t i = 0;
-	for (const size_t &id : pocket_members)
-	{
-		coord(id * 3) = replace_coord(i * 3);
-		coord(id * 3 + 1) = replace_coord(i * 3 + 1);
-		coord(id * 3 + 2) = replace_coord(i * 3 + 2);
-		++i;
-	}
-}
-
-void ProAnalysis::copy_pocket_coord(VectorXd & coord, VectorXd source_coord, PocketList pocket_members)
-{
-	for (const size_t &id : pocket_members)
-	{
-		coord(id * 3) = source_coord(id * 3);
-		coord(id * 3 + 1) = source_coord(id * 3 + 1);
-		coord(id * 3 + 2) = source_coord(id * 3 + 2);
 	}
 }
 

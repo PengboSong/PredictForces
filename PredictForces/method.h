@@ -5,27 +5,22 @@
 #include <Eigen/QR>
 #include <boost/format.hpp>
 
+#include "defines.h"
 #include "handle_io.h"
 
 using namespace Eigen;
 
-enum DistMatType : uint8_t {
-	Dist,
-	XYZdiff,
-	XYZdiffLtCutoff
-};
+Matrix3Xd coord_vec2mat(VectorXd coord);
 
-typedef struct {
-	double learning_rate = 0.0;
-	double convergence = 0.0;
-	size_t niteration = 0;
-} BGDpara;
+VectorXd coord_mat2vec(Matrix3Xd coord_xyz);
 
 VectorXd rotate(VectorXd coord, Vector3d axis, double angle);
 
 VectorXd fitting(VectorXd coord1, VectorXd coord2);
 
 VectorXd calc_displacement(VectorXd coord1, VectorXd coord2);
+
+Vector3d coord_center(VectorXd coord);
 
 double calc_rmsd(VectorXd coord1, VectorXd coord2);
 
@@ -45,11 +40,11 @@ std::list<size_t> gen_pocket(double cutoff, VectorXd dist2ligand);
 
 Matrix3d euler_rotation_matrix(Vector3d degrees);
 
-VectorXd coords_derivate(VectorXd coord, MatrixXd distmat_0, MatrixXd distmat, ArrayXXd kmat);
+void grep_pocket_coord(VectorXd &pocket_coord, VectorXd original_coord, PocketList pocket_members);
 
-Vector3d euler_degrees_derivate(Vector3d r, Vector3d dvdr, Vector3d degrees);
+void modify_pocket_coord(VectorXd &coord, VectorXd replace_coord, PocketList pocket_members);
 
-VectorXd degrees_derivate(VectorXd coord, VectorXd dR, Vector3d vcenter, Vector3d degrees);
+void copy_pocket_coord(VectorXd &coord, VectorXd source_coord, PocketList pocket_members);
 
 void normal_equation(VectorXd & coefficient, MatrixXd X, VectorXd Y);
 

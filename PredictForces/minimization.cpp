@@ -1,192 +1,470 @@
-#include "ProAnalysis.h"
+#include "Minimization.h"
 
-void ProAnalysis::minimization(bool & flag, PocketList pocket_members, VectorXd fix_coord, VectorXd & equilibrium_coord, VectorXd & pocket_force, BGDpara paras)
+Minimization::Minimization()
 {
-	double step = paras.learning_rate;
+}
 
-	// Set variables that would be often used
-	VectorXd initial_coord = ProE.get_procoord();
-	size_t veclen = initial_coord.size(); // 3N
-	size_t resn = veclen / 3; // N
-	size_t pocketlen = pocket_members.size() * 3; // L
-	ArrayXXd kmat = ProE.get_kmat();
-	MatrixXd dist_apo = gen_distmat(Dist, initial_coord);
+Minimization::Minimization(BGDpara paras, size_t N, VectorXd apo_procoord, ArrayXXd k_matrix)
+{
+	parameters = paras;
+	noden = N;
+	coordn = 3 * N;
 
-	equilibrium_coord = initial_coord;
-	modify_pocket_coord(equilibrium_coord, fix_coord, pocket_members);
-
-	// Initialize variables
-	double prev_potential = 0.0, potential = 0.0, ref_potential = 0.0, err = 0.0;
-	// Pocket Force - L
-	pocket_force = VectorXd::Zero(veclen);
+	coord = VectorXd::Zero(coordn);
+	coord_apo = apo_procoord;
+	assert(coord_apo.size() == coordn);
 	// Distance Matrix: Dist - N x N
-	ArrayXXd distdiffmat = ArrayXXd::Zero(resn, resn), ref_distdiffmat = ArrayXXd::Zero(resn, resn);
-	MatrixXd dist_holo = MatrixXd::Zero(resn, resn);
+	distmat = MatrixXd::Zero(noden, noden);
+	distmat_apo = gen_distmat(Dist, apo_procoord);
+	assert(distmat_apo.rows() == noden && distmat_apo.cols() == noden);
+	distmat_ref = MatrixXd::Zero(noden, noden);
+	// Distance Matrix : XYZdiff - N x 3N
+	xyzdiffmat = MatrixXd::Zero(noden, coordn);
+	// Matrix { (dist - dist0) * k / dist0 } - N x N
+	coeff = MatrixXd::Zero(noden, noden);
+
+	kmat = k_matrix;
+	assert(kmat.rows() == noden && kmat.cols() == noden);
+
 	// Coordinate gradient - 3N
-	VectorXd gradient = VectorXd::Zero(veclen), off_pocket_gradient = VectorXd::Zero(veclen);
-	// Equilibrium Coordinate - 3N
-	VectorXd prev_equilibrium = VectorXd::Zero(veclen), ref_equilibrium_coord = VectorXd::Zero(veclen);
+	dR = VectorXd::Zero(coordn);
+}
 
-	flag = false;
-	
-	// Iteration
-	for (size_t k = 0; k < paras.niteration; ++k)
+Minimization::~Minimization()
+{
+}
+
+void Minimization::update_coords_derivate()
+{
+	xyzdiffmat = gen_distmat(XYZdiff, coord);
+	distmat = gen_distmat(Dist, coord);
+	coeff = (distmat - distmat_apo).array() * kmat / distmat.array();
+
+	dR = VectorXd::Zero(coordn);
+
+	double coeffij = 0.0;
+	for (size_t i = 0; i < noden; ++i)
 	{
-		dist_holo = gen_distmat(Dist, equilibrium_coord);
-		distdiffmat = dist_holo - dist_apo;
-
-		potential = (distdiffmat.pow(2) * kmat).sum() / 4;
-		handle_message(MSG_EMPTY, boost::format("potential: %1$.4f") % potential);
-
-		if (k > 0 && abs(potential - prev_potential) < paras.convergence)
+		for (size_t j = 0; j < noden; ++j)
 		{
-			flag = true;
+			if (i != j)
+			{
+				coeffij = coeff(i, j);
+				dR(3 * i) += xyzdiffmat(i, 3 * j) * coeffij;
+				dR(3 * i + 1) += xyzdiffmat(i, 3 * j + 1) * coeffij;
+				dR(3 * i + 2) += xyzdiffmat(i, 3 * j + 2) * coeffij;
+			}
+		}
+	}
+}
+
+Vector3d Minimization::euler_degrees_derivate(Vector3d r, Vector3d dvdr, Vector3d degrees)
+{
+	double rx = r[0], ry = r[1], rz = r[2];
+	double dv_drx = dvdr[0], dv_dry = dvdr[1], dv_drz = dvdr[2];
+	double varphi = degrees[0], phi = degrees[1], theta = degrees[2];
+
+	double cos_varphi = cos(varphi), sin_varphi = sin(varphi);
+	double cos_phi = cos(phi), sin_phi = sin(phi);
+	double cos_theta = cos(theta), sin_theta = sin(theta);
+
+	double varphi_cymsz = cos_varphi * ry - sin_varphi * rz;
+	double varphi_syacz = sin_varphi * ry + cos_varphi * rz;
+
+	double drx_dvarphi = sin_theta * cos_phi * varphi_cymsz + sin_phi * varphi_syacz;
+	double dry_dvarphi = sin_theta * sin_phi * varphi_cymsz - cos_phi * varphi_syacz;
+	double drz_dvarphi = cos_theta * varphi_cymsz;
+
+	double drx_dphi = -cos_theta * sin_phi * rx - sin_theta * sin_phi * varphi_syacz - cos_phi * varphi_cymsz;
+	double dry_dphi = cos_theta * cos_phi * rx + sin_theta * cos_phi * varphi_syacz - sin_phi * varphi_cymsz;
+	double drz_dphi = 0.0;
+
+	double drx_dtheta = -cos_phi * sin_theta * rx + cos_phi * cos_theta * varphi_syacz;
+	double dry_dtheta = -sin_phi * sin_theta * rx + sin_phi * cos_theta * varphi_syacz;
+	double drz_dtheta = -cos_theta * rx - sin_theta * varphi_syacz;
+
+	double dv_dvarphi = dv_drx * drx_dvarphi + dv_dry * dry_dvarphi + dv_drz * drz_dvarphi;
+	double dv_dphi = dv_drx * drx_dphi + dv_dry * dry_dphi + dv_drz * drz_dphi;
+	double dv_dtheta = dv_drx * drx_dtheta + dv_dry * dry_dtheta + dv_drz * drz_dtheta;
+
+	Vector3d dDegv;
+	dDegv << dv_dvarphi, dv_dphi, dv_dtheta;
+	return dDegv;
+}
+
+VectorXd Minimization::degrees_derivate(VectorXd domain_coord, Vector3d vcenter, Vector3d degrees)
+{
+	VectorXd dDeg = VectorXd::Zero(coordn);
+	for (size_t i = 0; i < noden; ++i)
+		dDeg.block(3 * i, 0, 3, 1) = euler_degrees_derivate(domain_coord.block(3 * i, 0, 3, 1) - vcenter, dR.col(i), degrees);
+	return dDeg;
+}
+
+void Minimization::clear()
+{
+	coord = VectorXd::Zero(coordn);
+	distmat = MatrixXd::Zero(noden, noden);
+	distmat_ref = MatrixXd::Zero(noden, noden);
+	xyzdiffmat = MatrixXd::Zero(noden, coordn);
+	dR = VectorXd::Zero(coordn);
+}
+
+void Minimization::single_pocket(PocketList pocket_members, VectorXd & pocket_force, VectorXd fix_coord, VectorXd & equilibrium_coord)
+{
+	realstep = parameters.learning_rate;
+
+	size_t pocketlen = pocket_members.size() * 3; // L
+
+	coord = coord_apo;
+	modify_pocket_coord(coord, fix_coord, pocket_members);
+
+	// Pocket Force - 3N
+	pocket_force = VectorXd::Zero(coordn);
+	// Coordinate gradient - 3N
+	VectorXd dR_pocketoff = VectorXd::Zero(coordn);
+	// Equilibrium Coordinate - 3N
+	VectorXd coord_ref = VectorXd::Zero(coordn);
+
+	convergeStatus = false;
+
+	handle_message(MSG_INFO, "Start potential minimization process.");
+	handle_message(MSG_EMPTY, "*---*---*---*---*---*");
+
+	// Iteration
+	for (size_t k = 0; k < parameters.niteration; ++k)
+	{
+		handle_message(MSG_EMPTY, boost::format("Step: %1%") % k);
+
+		distmat = gen_distmat(Dist, coord);
+
+		potential = ((distmat - distmat_apo).array().pow(2) * kmat).sum() / 4;
+		handle_message(MSG_EMPTY, boost::format("Potential: %1$.4f") % potential);
+
+		if (k > 0 && !downwardStep && abs(potential - prev_potential) < parameters.convergence)
+		{
+			convergeStatus = true;
+			handle_message(MSG_RESULT, boost::format("Complete potential minimization process with %1% steps.") % k);
 			// Print gradient (vector)
 			break;
 		}
 
 		prev_potential = potential;
-		gradient = coords_derivate(equilibrium_coord, dist_apo, dist_holo, kmat);
+		update_coords_derivate();
 
-		off_pocket_gradient = gradient;
-		modify_pocket_coord(off_pocket_gradient, VectorXd::Zero(pocketlen), pocket_members);
+		dR_pocketoff = dR;
+		modify_pocket_coord(dR_pocketoff, VectorXd::Zero(pocketlen), pocket_members);
 
-		err = sqrt(off_pocket_gradient.dot(off_pocket_gradient));
-		handle_message(MSG_RESULT, boost::format("Error: $1.6f") % err);
+		err = sqrt(dR_pocketoff.dot(dR_pocketoff));
+		handle_message(MSG_EMPTY, boost::format("Error: %1$.4f") % err);
 
-		ref_equilibrium_coord = equilibrium_coord - step * gradient / err;
-		modify_pocket_coord(ref_equilibrium_coord, fix_coord, pocket_members);
+		coord_ref = coord - realstep * dR / err;
+		modify_pocket_coord(coord_ref, fix_coord, pocket_members);
+		handle_message(MSG_EMPTY, boost::format("Step Length: %1$.3f") % realstep);
+		handle_message(MSG_EMPTY, "*---*---*---*---*---*");
 
-		ref_distdiffmat = gen_distmat(Dist, ref_equilibrium_coord) - dist_apo;
-		ref_potential = (ref_distdiffmat.pow(2) * kmat).sum() / 4;
+		distmat_ref = gen_distmat(Dist, coord_ref);
+		ref_potential = ((distmat_ref - distmat_apo).array().pow(2) * kmat).sum() / 4;
 
 		if (ref_potential < potential)
 		{
-			step *= 1.2;
-			equilibrium_coord = ref_equilibrium_coord;
+			realstep *= parameters.upward_factor;
+			coord = coord_ref;
+			downwardStep = false;
 		}
 		else if (ref_potential > potential)
 		{
-			step /= 1.5;
-			prev_potential = 0;
+			realstep /= parameters.downward_factor;
+			downwardStep = true;
 		}
 	}
 
-	if (!flag)
+	if (!convergeStatus)
 	{
-		handle_message(MSG_WARNING, boost::format("Do not converge in %1% steps.") % paras.niteration);
+		handle_message(MSG_WARNING, boost::format("Do not converge in %1% steps.") % parameters.niteration);
 		return;
 	}
 
-	double rmsd_full = calc_rmsd(equilibrium_coord, fitting(initial_coord, equilibrium_coord));
-	handle_message(MSG_RESULT, boost::format("RMSD for fitting full coordinates before and after minimization: $1.4f ") % rmsd_full);
+	double rmsd_full = calc_rmsd(coord, fitting(coord_apo, coord));
+	handle_message(MSG_RESULT, boost::format("RMSD for fitting full coordinates before and after minimization: %1$.4f ") % rmsd_full);
 
-	equilibrium_coord = fitting(initial_coord, equilibrium_coord);
+	coord = fitting(coord_apo, coord);
 
 	VectorXd pocket = VectorXd::Zero(pocketlen);
-	VectorXd apo_pocket = VectorXd::Zero(pocketlen);
-	grep_pocket_coord(pocket, equilibrium_coord, pocket_members);
-	grep_pocket_coord(apo_pocket, initial_coord, pocket_members);
+	VectorXd pocket_apo = VectorXd::Zero(pocketlen);
+	grep_pocket_coord(pocket, coord, pocket_members);
+	grep_pocket_coord(pocket_apo, coord_apo, pocket_members);
 
-	double rmsd_pocket = calc_rmsd(pocket, fitting(apo_pocket, pocket));
-	handle_message(MSG_RESULT, boost::format("RMSD for fitting pocket coordinates before and after minimization: $1.4f ") % rmsd_pocket);
+	double rmsd_pocket = calc_rmsd(pocket, fitting(pocket_apo, pocket));
+	handle_message(MSG_RESULT, boost::format("RMSD for fitting pocket coordinates before and after minimization: %1$.4f ") % rmsd_pocket);
 
-	gradient = coords_derivate(equilibrium_coord, dist_apo, dist_holo, kmat);
-
-	copy_pocket_coord(pocket_force, gradient, pocket_members);
+	update_coords_derivate();
+	copy_pocket_coord(pocket_force, dR, pocket_members);
+	equilibrium_coord = coord;
 }
 
-void ProAnalysis::minimization(bool & flag, VectorXd & equilibrium_coord, VectorXd & pocket_force, BGDpara paras)
+void Minimization::single_pocket(VectorXd & pocket_force, VectorXd & equilibrium_coord)
 {
-	double step = paras.learning_rate;
+	realstep = parameters.learning_rate;
 
-	// Set variables that would be often used
-	VectorXd initial_coord = ProE.get_procoord();
-	size_t veclen = initial_coord.size(); // 3N
-	size_t resn = veclen / 3; // N
-	ArrayXXd kmat = ProE.get_kmat();
-	MatrixXd dist_apo = gen_distmat(Dist, initial_coord);
+	coord = coord_apo;
 
-	equilibrium_coord = initial_coord;
-
-	// Initialize variables
-	double prev_potential = 0.0, potential = 0.0, ref_potential = 0.0, err = 0.0;
 	// Pocket Force - 3N
-	pocket_force = VectorXd::Zero(veclen);
-	// Distance Matrix: Dist - N x N
-	ArrayXXd distdiffmat = ArrayXXd::Zero(resn, resn), ref_distdiffmat = ArrayXXd::Zero(resn, resn);
-	MatrixXd dist_holo = MatrixXd::Zero(resn, resn);
-	// Coordinate gradient - 3N
-	VectorXd gradient = VectorXd::Zero(veclen);
+	pocket_force = VectorXd::Zero(coordn);
 	// Equilibrium Coordinate - 3N
-	VectorXd prev_equilibrium = VectorXd::Zero(veclen), ref_equilibrium_coord = VectorXd::Zero(veclen);
+	VectorXd coord_ref = VectorXd::Zero(coordn);
 
-	flag = false;
+	convergeStatus = false;
 
-	for (size_t k = 0; k < paras.niteration; ++k)
+	handle_message(MSG_INFO, "Start potential minimization process.");
+	handle_message(MSG_EMPTY, "*---*---*---*---*---*");
+
+	for (size_t k = 0; k < parameters.niteration; ++k)
 	{
-		dist_holo = gen_distmat(Dist, equilibrium_coord);
-		distdiffmat = dist_holo - dist_apo;
+		handle_message(MSG_EMPTY, boost::format("Step: %1%") % k);
 
-		potential = (distdiffmat.pow(2) * kmat).sum() / 4 - pocket_force.transpose() * (equilibrium_coord - initial_coord);
-		handle_message(MSG_EMPTY, boost::format("potential: %1$.4f") % potential);
+		distmat = gen_distmat(Dist, coord);
 
-		if (k > 0 && abs(potential - prev_potential) < paras.convergence)
+		potential = ((distmat - distmat_apo).array().pow(2) * kmat).sum() / 4 - pocket_force.transpose() * (coord - coord_apo);
+		handle_message(MSG_EMPTY, boost::format("Potential: %1$.4f") % potential);
+
+		if (k > 0 && !downwardStep && abs(potential - prev_potential) < parameters.convergence)
 		{
-			flag = true;
+			convergeStatus = true;
+			handle_message(MSG_RESULT, boost::format("Complete potential minimization process with %1% steps.") % k);
 			// Print gradient (vector)
 			break;
 		}
 
 		prev_potential = potential;
 
-		gradient = coords_derivate(equilibrium_coord, dist_apo, dist_holo, kmat);		
-		gradient -= pocket_force;
+		update_coords_derivate();
+		dR -= pocket_force;
 
-		err = sqrt(gradient.dot(gradient));
+		err = sqrt(dR.dot(dR));
+		handle_message(MSG_EMPTY, boost::format("Error: %1$.4f") % err);
 
-		ref_equilibrium_coord = equilibrium_coord - step * gradient / err;
-		// Print step (double)
+		coord_ref = coord - realstep * dR / err;
+		handle_message(MSG_EMPTY, boost::format("Step Length: %1$.3f") % realstep);
+		handle_message(MSG_EMPTY, "*---*---*---*---*---*");
 
-		ref_distdiffmat = gen_distmat(Dist, ref_equilibrium_coord) - dist_apo;
-		double new_potential = (ref_distdiffmat.pow(2) * kmat).sum() / 4 - pocket_force.transpose() * (ref_equilibrium_coord - initial_coord);
+		distmat_ref = gen_distmat(Dist, coord_ref);
+		ref_potential = ((distmat_ref - distmat_apo).array().pow(2) * kmat).sum() / 4 - pocket_force.transpose() * (coord_ref - coord_apo);
 
-		if (new_potential < potential)
+		if (ref_potential < potential)
 		{
-			step *= 1.2;
-			equilibrium_coord = ref_equilibrium_coord;
+			realstep *= parameters.upward_factor;
+			coord = coord_ref;
+			downwardStep = false;
 		}
-		else if (new_potential > potential)
+		else if (ref_potential > potential)
 		{
-			step /= 1.5;
-			prev_potential = 0;
+			realstep /= parameters.downward_factor;
+			downwardStep = true;
 		}
 	}
 
-	if (!flag)
+	if (!convergeStatus)
 	{
-		handle_message(MSG_WARNING, boost::format("Do not converge in %1% steps.") % paras.niteration);
+		handle_message(MSG_WARNING, boost::format("Do not converge in %1% steps.") % parameters.niteration);
 		return;
 	}
 
-	double rmsd_full = calc_rmsd(equilibrium_coord, fitting(initial_coord, equilibrium_coord));
-	handle_message(MSG_RESULT, boost::format("RMSD for fitting full coordinates before and after minimization: $1.4f ") % rmsd_full);
+	double rmsd_full = calc_rmsd(coord, fitting(coord_apo, coord));
+	handle_message(MSG_RESULT, boost::format("RMSD for fitting full coordinates before and after minimization: %1$.4f ") % rmsd_full);
 
-	equilibrium_coord = fitting(initial_coord, equilibrium_coord);
+	coord = fitting(coord_apo, coord);
+	equilibrium_coord = coord;
 }
 
-void ProAnalysis::optimize_pocket_structure(Vector3d &vcenter, Vector3d &degrees, VectorXd coord, MatrixXd distmat_0, MatrixXd distmat, ArrayXXd kmat)
+void Minimization::single_pocket_with_force(PocketList pocket_members, VectorXd & pocket_force, VectorXd fix_coord, VectorXd & equilibrium_coord)
 {
-	assert(distmat_0.cols() == distmat_0.rows());
-	assert(distmat.cols() == distmat.rows());
-	assert(kmat.cols() == kmat.rows());
-	assert(distmat_0.rows() == distmat.rows() == kmat.rows());
-	assert(coord.size() == 3 * distmat_0.rows());
+	realstep = parameters.learning_rate;
 
-	size_t lenN = distmat_0.rows();
+	size_t pocketlen = pocket_members.size() * 3; // L
 
-	VectorXd dRvec = coords_derivate(coord, distmat_0, distmat, kmat);
-	VectorXd dDeg = degrees_derivate(coord, dRvec, vcenter, degrees);
+	coord = coord_apo;
+	modify_pocket_coord(coord, fix_coord, pocket_members);
 
+	// Pocket Force - 3N
+	assert(pocket_force.size() == coordn);
+	// Coordinate gradient - 3N
+	VectorXd dR_pocketoff = VectorXd::Zero(coordn);
+	// Equilibrium Coordinate - 3N
+	VectorXd coord_ref = VectorXd::Zero(coordn);
+
+	convergeStatus = false;
+
+	handle_message(MSG_INFO, "Start potential minimization process.");
+	handle_message(MSG_EMPTY, "*---*---*---*---*---*");
+
+	// Iteration
+	for (size_t k = 0; k < parameters.niteration; ++k)
+	{
+		handle_message(MSG_EMPTY, boost::format("Step: %1%") % k);
+
+		distmat = gen_distmat(Dist, coord);
+
+		potential = ((distmat - distmat_apo).array().pow(2) * kmat).sum() / 4 - pocket_force.dot(coord - coord_apo);
+		handle_message(MSG_EMPTY, boost::format("Potential: %1$.4f") % potential);
+
+		if (k > 0 && !downwardStep && abs(potential - prev_potential) < parameters.convergence)
+		{
+			convergeStatus = true;
+			handle_message(MSG_RESULT, boost::format("Complete potential minimization process with %1% steps.") % k);
+			// Print gradient (vector)
+			break;
+		}
+
+		prev_potential = potential;
+		update_coords_derivate();
+		dR -= pocket_force;
+
+		modify_pocket_coord(dR_pocketoff, VectorXd::Zero(pocketlen), pocket_members);
+		err = sqrt(dR_pocketoff.dot(dR_pocketoff));
+		handle_message(MSG_EMPTY, boost::format("Error: %1$.4f") % err);
+
+		coord_ref = coord - realstep * dR / err;
+		modify_pocket_coord(coord_ref, fix_coord, pocket_members);
+		handle_message(MSG_EMPTY, boost::format("Step Length: %1$.3f") % realstep);
+		handle_message(MSG_EMPTY, "*---*---*---*---*---*");
+
+		distmat_ref = gen_distmat(Dist, coord_ref);
+		ref_potential = ((distmat_ref - distmat_apo).array().pow(2) * kmat).sum() / 4 - pocket_force.dot(coord_ref - coord_apo);
+
+		if (ref_potential < potential)
+		{
+			realstep *= parameters.upward_factor;
+			coord = coord_ref;
+			downwardStep = false;
+		}
+		else if (ref_potential > potential)
+		{
+			realstep /= parameters.downward_factor;
+			downwardStep = true;
+		}
+	}
+
+	if (!convergeStatus)
+	{
+		handle_message(MSG_WARNING, boost::format("Do not converge in %1% steps.") % parameters.niteration);
+		return;
+	}
+
+	double rmsd_full = calc_rmsd(coord, fitting(coord_apo, coord));
+	handle_message(MSG_RESULT, boost::format("RMSD for fitting full coordinates before and after minimization: %1$.4f ") % rmsd_full);
+
+	coord = fitting(coord_apo, coord);
+
+	VectorXd pocket = VectorXd::Zero(pocketlen);
+	VectorXd pocket_apo = VectorXd::Zero(pocketlen);
+	grep_pocket_coord(pocket, coord, pocket_members);
+	grep_pocket_coord(pocket_apo, coord_apo, pocket_members);
+
+	double rmsd_pocket = calc_rmsd(pocket, fitting(pocket_apo, pocket));
+	handle_message(MSG_RESULT, boost::format("RMSD for fitting pocket coordinates before and after minimization: %1$.4f ") % rmsd_pocket);
+
+	update_coords_derivate();
+	dR -= pocket_force;
+	VectorXd pocket_force_change = VectorXd::Zero(coordn);
+	copy_pocket_coord(pocket_force_change, dR, pocket_members);
+	pocket_force += pocket_force_change;
+	equilibrium_coord = coord;
+}
+
+void Minimization::multiple_pocket(
+	PocketList fixed_pocket_members,
+	VectorXd fixed_pocket_coord,
+	PocketList rotate_pocket_members,
+	VectorXd rotate_pocket_coord,
+	VectorXd & equilibrium_coord,
+	Vector3d & vcenter,
+	Vector3d & degrees)
+{
+	size_t pocketn_fixed = fixed_pocket_members.size();
+	assert(fixed_pocket_coord.size() == 3 * pocketn_fixed);
+	size_t pocketn_rot = rotate_pocket_members.size();
+	assert(rotate_pocket_coord.size() == 3 * pocketn_rot);
+	Map<Matrix3Xd> rot_pocket_domain(rotate_pocket_coord.data(), 3, pocketn_rot);
+
+	coord = coord_apo;
+	modify_pocket_coord(coord, fixed_pocket_coord, fixed_pocket_members);
+	modify_pocket_coord(coord, rotate_pocket_coord, rotate_pocket_members);
+
+	Vector3d vcenter_rot = coord_center(rotate_pocket_coord);
+	vcenter = vcenter_rot;
+	degrees = Vector3d::Zero();
+
+	// Derivates
+	update_coords_derivate();
+	VectorXd dRdomain = VectorXd::Zero(3 * pocketn_rot), dDeg = VectorXd::Zero(3 * pocketn_rot);
+	Vector3d dcenter = Vector3d::Zero(), ddegrees = Vector3d::Zero();
 	
+	// Equilibrium Coordinate - 3N
+	VectorXd prev_coord = VectorXd::Zero(coordn), coord_ref = VectorXd::Zero(coordn);
+
+	convergeStatus = false;
+
+	for (size_t k = 0; k < parameters.niteration; ++k)
+	{
+		distmat = gen_distmat(Dist, coord);
+
+		potential = ((distmat - distmat_apo).array().pow(2) * kmat).sum() / 4;
+		handle_message(MSG_EMPTY, boost::format("potential: %1$.4f") % potential);
+
+		if (k > 0 && !downwardStep && abs(potential - prev_potential) < parameters.convergence)
+		{
+			convergeStatus = true;
+			// Print gradient (vector)
+			break;
+		}
+
+		prev_potential = potential;
+
+		update_coords_derivate();
+		modify_pocket_coord(dR, VectorXd::Zero(3 * pocketn_fixed), fixed_pocket_members);
+		modify_pocket_coord(dR, VectorXd::Zero(3 * pocketn_rot), rotate_pocket_members);
+
+		grep_pocket_coord(dRdomain, dR, rotate_pocket_members);
+		dDeg = degrees_derivate(rot_pocket_domain, vcenter, degrees);
+		dcenter = coord_vec2mat(dRdomain).rowwise().sum();
+		ddegrees = coord_vec2mat(dDeg).rowwise().sum();
+
+		err = sqrt(dR.dot(dR));
+
+		rot_pocket_domain.colwise() -= vcenter;
+		vcenter -= realstep * dcenter / err;
+		degrees -= realstep * dDeg / err;
+		rot_pocket_domain = euler_rotation_matrix(degrees) * rot_pocket_domain;
+		rot_pocket_domain.colwise() += vcenter;
+
+		coord_ref = coord - realstep * dR / err;
+		modify_pocket_coord(coord_ref, coord_mat2vec(rot_pocket_domain), rotate_pocket_members);
+
+		distmat_ref = gen_distmat(Dist, coord_ref);
+		double new_potential = ((distmat_ref - distmat_apo).array().pow(2) * kmat).sum() / 4;
+
+		if (new_potential < potential)
+		{
+			realstep *= 1.2;
+			coord = coord_ref;
+			downwardStep = false;
+		}
+		else if (new_potential > potential)
+		{
+			realstep /= 1.5;
+			downwardStep = true;
+		}
+	}
+
+	if (!convergeStatus)
+	{
+		handle_message(MSG_WARNING, boost::format("Do not converge in %1% steps.") % parameters.niteration);
+		return;
+	}
+
+	double rmsd_full = calc_rmsd(coord, fitting(coord_apo, coord));
+	handle_message(MSG_RESULT, boost::format("RMSD for fitting full coordinates before and after minimization: %1$.4f ") % rmsd_full);
+
+	coord = fitting(coord_apo, coord);
+	equilibrium_coord = coord;
 }

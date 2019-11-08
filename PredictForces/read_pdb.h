@@ -3,28 +3,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string.hpp>
 
-struct ResInfo
-{
-	std::string resname;
-	std::string chain;
-	size_t resid;
-	double x;
-	double y;
-	double z;
-	double bfactor;
-};
-struct AtomInfo
-{
-	std::string atomname;
-	std::string resname;
-	std::string chain;
-	size_t atomid;
-	size_t resid;
-	double x;
-	double y;
-	double z;
-	double bfactor;
-};
+#include "defines.h"
 
 std::string sslice(size_t begin, size_t size, std::string in);
 

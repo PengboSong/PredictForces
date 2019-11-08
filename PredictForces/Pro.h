@@ -9,35 +9,11 @@
 #include <boost/format.hpp>
 #include <Eigen/Dense>
 
+#include "defines.h"
 #include "handle_io.h"
 #include "read_pdb.h"
 
 using namespace Eigen;
-
-constexpr double Navo = 6.02214076e23;
-constexpr double kB = 1.380649e-23;
-constexpr double Temp = 298.15;
-constexpr double h = 6.6260693e-34;
-
-enum AllosteryCycleStates : uint8_t {
-	ApoState,		 // E
-	BindingState,	 // ES
-	AllosteryState,	 // EA
-	ComplexState	 // EAS
-};
-
-typedef struct
-{
-	double k_intra;
-	double k_inter;
-	double cutoff_intra;
-	double cutoff_inter;
-	std::vector<std::string> ligandres;
-	std::vector<std::string> exclres;
-} ProConfigs;
-
-typedef std::vector<AtomInfo> AtomInfoList;
-typedef std::pair<size_t, size_t> ContactPair;
 
 class Pro
 {

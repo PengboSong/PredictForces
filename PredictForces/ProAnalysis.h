@@ -8,64 +8,15 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string.hpp>
 
+#include "defines.h"
 #include "handle_io.h"
-#include "Pro.h"
 #include "method.h"
+#include "Pro.h"
+#include "Minimization.h"
 
 using namespace Eigen;
 
 namespace filesys = boost::filesystem;
-
-constexpr double PI = 3.1415926535897932;
-
-enum Pockets : uint8_t {
-	POCKETS,	  // Binding Pocket
-	POCKETA,      // Allostery Pocket
-	POCKETAS	  // Complex Pocket
-};
-
-enum LFmethods : uint8_t {
-	BatchGradientDescent,
-	NormalEquation
-};
-
-typedef std::list<size_t> PocketList;
-
-typedef struct {
-	bool access_force = false;
-	PocketList members;
-	VectorXd force;
-} PocketInfo;
-
-typedef struct {
-	double pro = 0.0;
-	double pocket = 0.0;
-	double total = 0.0;
-} FreeEnergy;
-
-typedef struct {
-	bool empty = true;
-	bool withligand = false;
-	VectorXd procoord;
-	VectorXd fitprocoord;
-	VectorXd dist2ligand;
-	FreeEnergy G;
-} ProInfo;
-
-typedef struct {
-	bool preprocess = false;
-	double rmsd = 0.0;
-	double meanforce = 0.0;
-	double pearson = 0.0;
-	VectorXd displacement;
-	VectorXd force;
-	VectorXd equilibrium_coord;
-	MatrixXd distdiff;
-} ApoProInfo;
-
-typedef std::map<Pockets, PocketInfo> PocketContainer;
-typedef std::map<Pockets, ProInfo> ProInfoContainer;
-typedef std::map<Pockets, ApoProInfo> ApoProInfoContainer;
 
 class ProAnalysis
 {
@@ -96,24 +47,24 @@ public:
 
 	void show_pocket_force(Pockets m) { show_pocket_force(pocket(m).access_force, pocket(m).members, pocket(m).force); }
 
-	void show_pro_pocket_force(Pockets m) { show_pro_pocket_force(pocket_members(m), apo_pro(m).force); }
+	void show_pro_pocket_force(Pockets m) { show_pro_pocket_force(pocket_members(m), pro(m).force); }
 
-	void show_pro_all_force(Pockets m) { show_pro_all_force(apo_pro(m).force); }
+	void show_pro_all_force(Pockets m) { show_pro_all_force(pro(m).force); }
 
 	void test_pocket(Pockets m)
 	{
 		test_pocket(
 			pocket(m).access_force,
-			apo_pro(m).preprocess,
+			pro(m).preprocess,
 			pocket(m).members,
-			apo_pro(m).displacement,
+			pro(m).displacement,
 			pocket(m).force,
-			pro(m).fitprocoord
+			pro(m).fitcoord
 		);
 		calc_model_correlation(
 			pocket(m).access_force,
 			pocket(m).force,
-			apo_pro(m).displacement
+			pro(m).displacement
 		);
 	}
 
@@ -135,11 +86,11 @@ public:
 
 	double calc_apo_pro_rmsd(Pockets m)
 	{
-		if (apo_pro(m).preprocess)
+		if (pro(m).preprocess)
 			calc_model_rmsd(
 				pocket(m).access_force,
 				pocket(m).force,
-				pro(m).fitprocoord
+				pro(m).fitcoord
 			);
 	}
 
@@ -162,19 +113,11 @@ private:
 
 	ProInfo & pro(Pockets m) { return proinfos.at(m); }
 
-	ApoProInfo & apo_pro(Pockets m) { return apo_proinfos.at(m); }
-
 	void init_container();
 
 	void preprocess(Pockets m);
 
 	void switch_LFmethod(VectorXd &coeff, MatrixXd X, VectorXd Y);
-
-	void grep_pocket_coord(VectorXd &pocket_coord, VectorXd original_coord, PocketList pocket_members);
-
-	void modify_pocket_coord(VectorXd &coord, VectorXd replace_coord, PocketList pocket_members);
-
-	void copy_pocket_coord(VectorXd &coord, VectorXd source_coord, PocketList pocket_members);
 
 	double calc_model_rmsd(bool access, VectorXd pocket_force, VectorXd refcoord);
 
@@ -210,12 +153,6 @@ private:
 
 	void align_multiple_pockets(PocketInfo pocket1, VectorXd & pocket1_coord, PocketInfo pocket2, VectorXd & pocket2_coord);
 
-	void minimization(bool & flag, PocketList pocket_members, VectorXd fix_procoord, VectorXd & equilibrium_coord, VectorXd & pocket_force, BGDpara paras);
-
-	void minimization(bool & flag, VectorXd & equilibrium_coord, VectorXd & pocket_force, BGDpara paras);
-
-	void optimize_pocket_structure(Vector3d &vcenter, Vector3d &degrees, VectorXd coord, MatrixXd distmat_0, MatrixXd distmat, ArrayXXd kmat);
-
 	// Pack functions for convenience
 	void minimization_calc_energy(bool & flag, Pockets m);
 
@@ -232,8 +169,6 @@ private:
 	PocketContainer pockets;
 
 	ProInfoContainer proinfos;
-
-	ApoProInfoContainer apo_proinfos;
 
 	MatrixXd hessian;
 	MatrixXd covariance;
@@ -253,9 +188,8 @@ private:
 
 	// Multiple linear fitting method
 	LFmethods LFMETHOD = BatchGradientDescent;
-
-	// BGD parameters
-	BGDpara BGDparameters = { 1e-2, 1e-4, 1000000 };
+	Minimization MinPocket;
+	BGDpara BGDparameters = { 1e-2, 1e-4, 1.2, 1.5, 1000000 };
 
 	double cutoff_intra = 9.0;
 	double k_intra = 10.0;

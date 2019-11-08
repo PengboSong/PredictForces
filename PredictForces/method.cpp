@@ -1,5 +1,17 @@
 #include "method.h"
 
+Matrix3Xd coord_vec2mat(VectorXd coord)
+{
+	Map<Matrix3Xd> coord_xyz(coord.data(), 3, coord.size() / 3);
+	return coord_xyz;
+}
+
+VectorXd coord_mat2vec(Matrix3Xd coord_xyz)
+{
+	Map<VectorXd> coord(coord_xyz.data(), coord_xyz.size());
+	return coord;
+}
+
 VectorXd rotate(VectorXd coord, Vector3d axis, double angle)
 {
 	if (axis.dot(axis) != 1.0)
@@ -82,6 +94,13 @@ VectorXd calc_displacement(VectorXd coord1, VectorXd coord2)
 		return VectorXd();
 }
 
+Vector3d coord_center(VectorXd coord)
+{
+	Map<Matrix3Xd> coord_xyz(coord.data(), 3, coord.size() / 3);
+	Vector3d center = coord_xyz.rowwise().mean();
+	return center;
+}
+
 double calc_rmsd(VectorXd coord1, VectorXd coord2)
 {
 	if (coord1.size() == coord2.size())
@@ -150,10 +169,10 @@ MatrixXd gen_distmat(DistMatType t, VectorXd coord, double cutoff)
 		distmat = MatrixXd::Zero(resn, resn);
 		for (size_t i = 0; i < resn; ++i)
 		{
-			coordi = coord.block(3 * i, 1, 3, 1);
+			coordi = coord.block(3 * i, 0, 3, 1);
 			for (size_t j = i + 1; j < resn; ++j)
 			{
-				coordij = coordi - coord.block(3 * j, 1, 3, 1);
+				coordij = coordi - coord.block(3 * j, 0, 3, 1);
 				dist = sqrt(coordij.pow(2).sum());
 				distmat(j, i) = distmat(i, j) = dist;
 			}
@@ -166,10 +185,10 @@ MatrixXd gen_distmat(DistMatType t, VectorXd coord, double cutoff)
 		{
 			for (size_t i = 0; i < resn; ++i)
 			{
-				coordi = coord.block(3 * i, 1, 3, 1);
+				coordi = coord.block(3 * i, 0, 3, 1);
 				for (size_t j = i + 1; j < resn; ++j)
 				{
-					coordij = coordi - coord.block(3 * j, 1, 3, 1);
+					coordij = coordi - coord.block(3 * j, 0, 3, 1);
 					distmat(i, 3 * j) = coordij(0);
 					distmat(i, 3 * j + 1) = coordij(1);
 					distmat(i, 3 * j + 2) = coordij(2);
@@ -183,10 +202,10 @@ MatrixXd gen_distmat(DistMatType t, VectorXd coord, double cutoff)
 		{
 			for (size_t i = 0; i < resn; ++i)
 			{
-				coordi = coord.block(3 * i, 1, 3, 1);
+				coordi = coord.block(3 * i, 0, 3, 1);
 				for (size_t j = i + 1; j < resn; ++j)
 				{
-					coordij = coordi - coord.block(3 * j, 1, 3, 1);
+					coordij = coordi - coord.block(3 * j, 0, 3, 1);
 					dist = sqrt(coordij.pow(2).sum());
 					if (dist < cutoff)
 					{
@@ -267,80 +286,39 @@ Matrix3d euler_rotation_matrix(Vector3d degrees)
 	return rmat;
 }
 
-VectorXd coords_derivate(VectorXd coord, MatrixXd distmat_0, MatrixXd distmat, ArrayXXd kmat)
+void grep_pocket_coord(VectorXd & pocket_coord, VectorXd original_coord, PocketList pocket_members)
 {
-	assert(distmat_0.cols() == distmat_0.rows());
-	assert(distmat.cols() == distmat.rows());
-	assert(kmat.cols() == kmat.rows());
-	assert(distmat_0.rows() == distmat.rows() == kmat.rows());
-	assert(coord.size() == 3 * distmat_0.rows());
-
-	size_t lenN = distmat_0.rows(); // N
-
-	VectorXd dR = VectorXd::Zero(3 * lenN);
-
-	// Distance Matrix : XYZdiff - N x 3N
-	MatrixXd xyzdiff = gen_distmat(XYZdiff, coord);
-	// Matrix { (dist - dist0) * k / dist0 } - N x N
-	MatrixXd coeff = (distmat - distmat_0).array() * kmat / distmat.array();
-
-	double coeffij = 0.0;
-	for (size_t i = 0; i < lenN; ++i)
+	size_t i = 0;
+	for (const size_t &id : pocket_members)
 	{
-		for (size_t j = i + 1; j < lenN; ++j)
-		{
-			coeffij = coeff(i, j);
-			dR(3 * i) += xyzdiff(i, 3 * j) * coeffij;
-			dR(3 * i + 1) += xyzdiff(i, 3 * j + 1) * coeffij;
-			dR(3 * i + 2) += xyzdiff(i, 3 * j + 2) * coeffij;
-		}
+		pocket_coord(i * 3) = original_coord(id * 3);
+		pocket_coord(i * 3 + 1) = original_coord(id * 3 + 1);
+		pocket_coord(i * 3 + 2) = original_coord(id * 3 + 2);
+		++i;
 	}
-	return dR;
 }
 
-Vector3d euler_degrees_derivate(Vector3d r, Vector3d dvdr, Vector3d degrees)
+void modify_pocket_coord(VectorXd & coord, VectorXd replace_coord, PocketList pocket_members)
 {
-	double rx = r[0], ry = r[1], rz = r[2];
-	double dv_drx = dvdr[0], dv_dry = dvdr[1], dv_drz = dvdr[2];
-	double varphi = degrees[0], phi = degrees[1], theta = degrees[2];
-
-	double cos_varphi = cos(varphi), sin_varphi = sin(varphi);
-	double cos_phi = cos(phi), sin_phi = sin(phi);
-	double cos_theta = cos(theta), sin_theta = sin(theta);
-
-	double varphi_cymsz = cos_varphi * ry - sin_varphi * rz;
-	double varphi_syacz = sin_varphi * ry + cos_varphi * rz;
-
-	double drx_dvarphi = sin_theta * cos_phi * varphi_cymsz + sin_phi * varphi_syacz;
-	double dry_dvarphi = sin_theta * sin_phi * varphi_cymsz - cos_phi * varphi_syacz;
-	double drz_dvarphi = cos_theta * varphi_cymsz;
-
-	double drx_dphi = -cos_theta * sin_phi * rx - sin_theta * sin_phi * varphi_syacz - cos_phi * varphi_cymsz;
-	double dry_dphi = cos_theta * cos_phi * rx + sin_theta * cos_phi * varphi_syacz - sin_phi * varphi_cymsz;
-	double drz_dphi = 0.0;
-
-	double drx_dtheta = -cos_phi * sin_theta * rx + cos_phi * cos_theta * varphi_syacz;
-	double dry_dtheta = -sin_phi * sin_theta * rx + sin_phi * cos_theta * varphi_syacz;
-	double drz_dtheta = -cos_theta * rx - sin_theta * varphi_syacz;
-
-	double dv_dvarphi = dv_drx * drx_dvarphi + dv_dry * dry_dvarphi + dv_drz * drz_dvarphi;
-	double dv_dphi = dv_drx * drx_dphi + dv_dry * dry_dphi + dv_drz * drz_dphi;
-	double dv_dtheta = dv_drx * drx_dtheta + dv_dry * dry_dtheta + dv_drz * drz_dtheta;
-
-	Vector3d dDegv;
-	dDegv << dv_dvarphi, dv_dphi, dv_dtheta;
-	return dDegv;
+	size_t i = 0;
+	for (const size_t &id : pocket_members)
+	{
+		coord(id * 3) = replace_coord(i * 3);
+		coord(id * 3 + 1) = replace_coord(i * 3 + 1);
+		coord(id * 3 + 2) = replace_coord(i * 3 + 2);
+		++i;
+	}
 }
 
-VectorXd degrees_derivate(VectorXd coord, VectorXd dR, Vector3d vcenter, Vector3d degrees)
+void copy_pocket_coord(VectorXd & coord, VectorXd source_coord, PocketList pocket_members)
 {
-	size_t lenN = coord.size() / 3;
-	VectorXd dDeg = VectorXd::Zero(3 * lenN);
-	for (size_t i = 0; i < lenN; ++i)
-		dDeg.block(3 * i, 1, 3, 1) = euler_degrees_derivate(coord.block(3 * i, 1, 3, 1) - vcenter, dR.col(i), degrees);
-	return dDeg;
+	for (const size_t &id : pocket_members)
+	{
+		coord(id * 3) = source_coord(id * 3);
+		coord(id * 3 + 1) = source_coord(id * 3 + 1);
+		coord(id * 3 + 2) = source_coord(id * 3 + 2);
+	}
 }
-
 
 void normal_equation(VectorXd &coeff, MatrixXd X, VectorXd Y)
 {

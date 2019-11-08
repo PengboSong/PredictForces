@@ -9,33 +9,13 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
+#include "defines.h"
 #include "handle_io.h"
 #include "Pro.h"
 #include "ProAnalysis.h"
 
 namespace filesys = boost::filesystem;
 using json = nlohmann::json;
-
-typedef struct
-{
-	std::string pdb;
-	std::vector<std::string> ligandres;
-	std::vector<std::string> exclres;
-} AllosteryCycleState;
-
-typedef struct
-{
-	std::string workdir_path;
-	std::string text_tag;
-	std::string binary_tag;
-	std::string cache_tag;
-	AllosteryCycleState E;
-	AllosteryCycleState ES;
-	AllosteryCycleState EA;
-	AllosteryCycleState EAS;
-	double k;
-	double cutoff;
-} PredictForcesSettings;
 
 void read_settings(PredictForcesSettings &settings)
 {
@@ -189,6 +169,7 @@ int main()
 		);
 	}
 
+	/*
 	if (!settings.text_tag.empty())
 	{
 		Cycle.write_matrix(Cycle.get_hessian(), settings.text_tag + "_H.txt");
@@ -200,6 +181,7 @@ int main()
 		Cycle.write_matrix_binary(Cycle.get_hessian(), settings.binary_tag + ".hessian");
 		Cycle.write_matrix_binary(Cycle.get_covariance(), settings.binary_tag + ".covariance");
 	}
+	*/
 
 	Cycle.interactive();
 

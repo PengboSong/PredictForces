@@ -30,6 +30,12 @@
     <ClInclude Include="handle_io.h">
       <Filter>header</Filter>
     </ClInclude>
+    <ClInclude Include="Minimization.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="defines.h">
+      <Filter>header</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ProAnalysis.cpp">
@@ -50,7 +56,7 @@
     <ClCompile Include="handle_io.cpp">
       <Filter>source</Filter>
     </ClCompile>
-    <ClCompile Include="minimization.cpp">
+    <ClCompile Include="Minimization.cpp">
       <Filter>source</Filter>
     </ClCompile>
   </ItemGroup>

@@ -130,8 +130,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="defines.h" />
     <ClInclude Include="handle_io.h" />
     <ClInclude Include="method.h" />
+    <ClInclude Include="Minimization.h" />
     <ClInclude Include="Pro.h" />
     <ClInclude Include="ProAnalysis.h" />
     <ClInclude Include="read_pdb.h" />
@@ -140,7 +142,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="handle_io.cpp" />
     <ClCompile Include="method.cpp" />
-    <ClCompile Include="minimization.cpp" />
+    <ClCompile Include="Minimization.cpp" />
     <ClCompile Include="Pro.cpp" />
     <ClCompile Include="ProAnalysis.cpp" />
     <ClCompile Include="read_pdb.cpp" />
