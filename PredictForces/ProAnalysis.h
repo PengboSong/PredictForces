@@ -37,7 +37,6 @@ typedef struct {
 	VectorXd force;
 } PocketInfo;
 
-
 typedef struct {
 	double pro = 0.0;
 	double pocket = 0.0;
@@ -90,10 +89,6 @@ public:
 	Matrix3d get_covariance(size_t i, size_t j);
 
 	double get_covariance_s(size_t si, size_t sj);
-
-	MatrixXd gen_full_distmat(VectorXd coord);
-	MatrixXd gen_all_distmat(VectorXd coord);
-	MatrixXd gen_small_distmat(VectorXd coord);
 
 	void show_LFmethod_detail();
 
@@ -175,6 +170,12 @@ private:
 
 	void switch_LFmethod(VectorXd &coeff, MatrixXd X, VectorXd Y);
 
+	void grep_pocket_coord(VectorXd &pocket_coord, VectorXd original_coord, PocketList pocket_members);
+
+	void modify_pocket_coord(VectorXd &coord, VectorXd replace_coord, PocketList pocket_members);
+
+	void copy_pocket_coord(VectorXd &coord, VectorXd source_coord, PocketList pocket_members);
+
 	double calc_model_rmsd(bool access, VectorXd pocket_force, VectorXd refcoord);
 
 	double calc_model_correlation(bool access, VectorXd pocket_force, VectorXd displacement);
@@ -207,11 +208,13 @@ private:
 
 	void calc_energy_unknown(bool access, FreeEnergy & energy, VectorXd pocket_force, VectorXd equilibrium_coord);
 
+	void align_multiple_pockets(PocketInfo pocket1, VectorXd & pocket1_coord, PocketInfo pocket2, VectorXd & pocket2_coord);
+
 	void minimization(bool & flag, PocketList pocket_members, VectorXd fix_procoord, VectorXd & equilibrium_coord, VectorXd & pocket_force, BGDpara paras);
 
 	void minimization(bool & flag, VectorXd & equilibrium_coord, VectorXd & pocket_force, BGDpara paras);
 
-	void optimize_pocket_structure(Vector3d & vcenter, Vector3d & degrees, Matrix3Xd coord, MatrixXd distmat_0, MatrixXd distmat, MatrixXi contactmap, double k);
+	void optimize_pocket_structure(Vector3d &vcenter, Vector3d &degrees, VectorXd coord, MatrixXd distmat_0, MatrixXd distmat, ArrayXXd kmat);
 
 	// Pack functions for convenience
 	void minimization_calc_energy(bool & flag, Pockets m);

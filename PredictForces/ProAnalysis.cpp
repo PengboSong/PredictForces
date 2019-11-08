@@ -452,17 +452,8 @@ void ProAnalysis::gen_free_energy()
 		size_t i = 0, len = pocket_members(s).size() * 3;
 		VectorXd new_pocket_coord = VectorXd::Zero(len);
 		VectorXd new_apo_pocket_coord = VectorXd::Zero(len);
-		for (PocketList::iterator it = pocket_members(s).begin(); it != pocket_members(s).end(); ++it)
-		{
-			new_pocket_coord(i * 3) = apo_pro(POCKETAS).equilibrium_coord(*it * 3);
-			new_pocket_coord(i * 3 + 1) = apo_pro(POCKETAS).equilibrium_coord(*it * 3 + 1);
-			new_pocket_coord(i * 3 + 2) = apo_pro(POCKETAS).equilibrium_coord(*it * 3 + 2);
-
-			new_apo_pocket_coord(i * 3) = apo_procoord(*it * 3);
-			new_apo_pocket_coord(i * 3 + 1) = apo_procoord(*it * 3 + 1);
-			new_apo_pocket_coord(i * 3 + 2) = apo_procoord(*it * 3 + 2);
-			++i;
-		}
+		grep_pocket_coord(new_pocket_coord, apo_pro(POCKETAS).equilibrium_coord, pocket_members(s));
+		grep_pocket_coord(new_apo_pocket_coord, apo_procoord, pocket_members(s));
 
 		double gall = calc_rmsd(new_pocket_coord, fitting(new_apo_pocket_coord, new_pocket_coord));
 
@@ -584,6 +575,40 @@ void ProAnalysis::switch_LFmethod(VectorXd & coeff, MatrixXd X, VectorXd Y)
 		break;
 	default:
 		BGD(coeff, X, Y, BGDparameters);
+	}
+}
+
+void ProAnalysis::grep_pocket_coord(VectorXd & pocket_coord, VectorXd original_coord, PocketList pocket_members)
+{
+	size_t i = 0;
+	for (const size_t &id : pocket_members)
+	{
+		pocket_coord(i * 3) = original_coord(id * 3);
+		pocket_coord(i * 3 + 1) = original_coord(id * 3 + 1);
+		pocket_coord(i * 3 + 2) = original_coord(id * 3 + 2);
+		++i;
+	}
+}
+
+void ProAnalysis::modify_pocket_coord(VectorXd & coord, VectorXd replace_coord, PocketList pocket_members)
+{
+	size_t i = 0;
+	for (const size_t &id : pocket_members)
+	{
+		coord(id * 3) = replace_coord(i * 3);
+		coord(id * 3 + 1) = replace_coord(i * 3 + 1);
+		coord(id * 3 + 2) = replace_coord(i * 3 + 2);
+		++i;
+	}
+}
+
+void ProAnalysis::copy_pocket_coord(VectorXd & coord, VectorXd source_coord, PocketList pocket_members)
+{
+	for (const size_t &id : pocket_members)
+	{
+		coord(id * 3) = source_coord(id * 3);
+		coord(id * 3 + 1) = source_coord(id * 3 + 1);
+		coord(id * 3 + 2) = source_coord(id * 3 + 2);
 	}
 }
 
@@ -847,6 +872,7 @@ void ProAnalysis::gen_pocket_force(bool & flag, VectorXd & pocket_force, PocketL
 	MatrixXd X = MatrixXd::Zero(covariance.rows(), ndim);  // consider all residues for cost function.
 	VectorXd Y = displacement;
 	VectorXd coeff = VectorXd::Zero(ndim);
+	grep_pocket_coord(coeff, pro_force, pocket);
 
 	size_t i = 0;
 	for (PocketList::iterator it = pocket.begin(); it != pocket.end(); ++it)  
@@ -854,56 +880,15 @@ void ProAnalysis::gen_pocket_force(bool & flag, VectorXd & pocket_force, PocketL
 		X.col(3 * i) = covariance.col(*it * 3);
 		X.col(3 * i + 1) = covariance.col(*it * 3 + 1);
 		X.col(3 * i + 2) = covariance.col(*it * 3 + 2);
-		
-		coeff(i * 3) = pro_force(*it * 3);
-		coeff(i * 3 + 1) = pro_force(*it * 3 + 1);
-		coeff(i * 3 + 2) = pro_force(*it * 3 + 2);
-
 		++i;
 	}
-    
-	/*
-	MatrixXd Z = MatrixXd::Zero(covariance.rows(), ndim);  // consider only pocket residues for cost function.
-	VectorXd Y = VectorXd::Zero(ndim);
-	MatrixXd X = MatrixXd::Zero(ndim, ndim);
-	VectorXd coeff = VectorXd::Zero(ndim);
-
-	size_t i = 0;
-	for (PocketList::iterator it = pocket.begin(); it != pocket.end(); ++it)
-	{
-		Z.col(3 * i) = covariance.col(*it * 3);
-		Z.col(3 * i + 1) = covariance.col(*it * 3 + 1);
-		Z.col(3 * i + 2) = covariance.col(*it * 3 + 2);
-
-		X.row(i * 3) = Z.row(*it * 3);
-		X.row(i * 3 + 1) = Z.row(*it * 3 + 1);
-		X.row(i * 3 + 2) = Z.row(*it * 3 + 2);
-
-		coeff(i * 3) = pro_force(*it * 3);
-		coeff(i * 3 + 1) = pro_force(*it * 3 + 1);
-		coeff(i * 3 + 2) = pro_force(*it * 3 + 2);
-
-		Y(i * 3) = displacement(*it * 3);
-		Y(i * 3 + 1) = displacement(*it * 3 + 1);
-		Y(i * 3 + 2) = displacement(*it * 3 + 2);
-
-		++i;
-	}
-	*/
 
 	X /= (Navo * Temp * kB);
 
 	switch_LFmethod(coeff, X, Y);
 
-	i = 0;
-	for (PocketList::iterator it = pocket.begin(); it != pocket.end(); ++it)
-	{
-		pocket_force(*it * 3) = coeff(i * 3);
-		pocket_force(*it * 3 + 1) = coeff(i * 3 + 1);
-		pocket_force(*it * 3 + 2) = coeff(i * 3 + 2);
+	modify_pocket_coord(pocket_force, coeff, pocket);
 
-		++i;
-	}
 	flag = true;
 }
 
@@ -917,54 +902,6 @@ void ProAnalysis::gen_pocket_force(bool & flag, VectorXd & pocket_force, VectorX
 	gen_pocket_force(flag, pocket_force, unfixed_pocket, pro_force, equiv_displacement);
 	pocket_force += fixed_force;
 	flag = true;
-}
-
-MatrixXd ProAnalysis::gen_small_distmat(VectorXd coord)
-{
-	size_t resn = coord.size() / 3;
-	MatrixXd distmat = MatrixXd::Zero(resn, resn);
-	for (size_t i = 0; i < resn; i++)
-		for (size_t j = i + 1; j < resn; j++)
-			distmat(j, i) = distmat(i, j) = sqrt(pow(coord(3 * i) - coord(3 * j), 2) + pow(coord(3 * i + 1) - coord(3 * j + 1), 2) + pow(coord(3 * i + 2) - coord(3 * j + 2), 2));
-	return distmat;
-}
-
-MatrixXd ProAnalysis::gen_full_distmat(VectorXd coord)
-{
-	size_t resn = coord.size() / 3;
-	MatrixXd distmat = MatrixXd::Zero(3 * resn, 3 * resn);
-	for (size_t i = 0; i < resn; ++i)
-		for (size_t j = i + 1; j < resn; ++j)
-		{
-			double dist = sqrt(pow(coord(3 * i) - coord(3 * j), 2) + pow(coord(3 * i + 1) - coord(3 * j + 1), 2) + pow(coord(3 * i + 2) - coord(3 * j + 2), 2));
-			if (dist < cutoff_intra)
-			{
-				distmat(3 * i, 3 * j) = (coord(3 * i) - coord(3 * j));
-				distmat(3 * i + 1, 3 * j + 1) = (coord(3 * i + 1) - coord(3 * j + 1));
-				distmat(3 * i + 2, 3 * j + 2) = (coord(3 * i + 2) - coord(3 * j + 2));
-				distmat(3 * j, 3 * i) = -distmat(3 * i, 3 * j);
-				distmat(3 * j + 1, 3 * i + 1) = -distmat(3 * i + 1, 3 * j + 1);
-				distmat(3 * j + 2, 3 * i + 2) = -distmat(3 * i + 2, 3 * j + 2);
-			}
-		}
-	return distmat;
-}
-
-MatrixXd ProAnalysis::gen_all_distmat(VectorXd coord)
-{
-	size_t resn = coord.size() / 3;
-	MatrixXd distmat = MatrixXd::Zero(3 * resn, 3 * resn);
-	for (size_t i = 0; i < resn; ++i)
-		for (size_t j = i + 1; j < resn; ++j)
-		{
-				distmat(3 * i, 3 * j) = (coord(3 * i) - coord(3 * j));
-				distmat(3 * i + 1, 3 * j + 1) = (coord(3 * i + 1) - coord(3 * j + 1));
-				distmat(3 * i + 2, 3 * j + 2) = (coord(3 * i + 2) - coord(3 * j + 2));
-				distmat(3 * j, 3 * i) = -distmat(3 * i, 3 * j);
-				distmat(3 * j + 1, 3 * i + 1) = -distmat(3 * i + 1, 3 * j + 1);
-				distmat(3 * j + 2, 3 * i + 2) = -distmat(3 * i + 2, 3 * j + 2);
-		}
-	return distmat;
 }
 
 void ProAnalysis::calc_energy_known(bool flag, FreeEnergy & energy, PocketList pocket, VectorXd pro_force, MatrixXd distmat, VectorXd displacement)
@@ -992,7 +929,7 @@ void ProAnalysis::calc_energy_unknown(bool access, FreeEnergy & energy, VectorXd
 {
 	if (access)
 	{
-		ArrayXXd distdiffmat = gen_small_distmat(equilibrium_coord) - ProE.get_distmat();		
+		ArrayXXd distdiffmat = gen_distmat(Dist, equilibrium_coord) - ProE.get_distmat();		
 		energy.pro = (distdiffmat.pow(2) * ProE.get_kmat()).sum() / 4;
 		VectorXd displacement = equilibrium_coord - ProE.get_procoord();
 		energy.pocket = -pocket_force.transpose() * displacement;
@@ -1000,6 +937,18 @@ void ProAnalysis::calc_energy_unknown(bool access, FreeEnergy & energy, VectorXd
 	}
 	else
 		handle_message(MSG_WARNING, "Can not calculate energy without pocket force generated. Call \"gen_pocket*_force\" function first.");
+}
+
+void ProAnalysis::align_multiple_pockets(PocketInfo pocket1, VectorXd & pocket1_coord, PocketInfo pocket2, VectorXd & pocket2_coord)
+{
+	PocketList *poc1 = &(pocket1.members), *poc2 = &(pocket2.members);
+	VectorXd apo_pocket1_coord = VectorXd::Zero(poc1->size() * 3), apo_pocket2_coord = VectorXd::Zero(poc2->size() * 3);
+	grep_pocket_coord(apo_pocket1_coord, apo_procoord, *poc1);
+	grep_pocket_coord(apo_pocket2_coord, apo_procoord, *poc2);
+	pocket1_coord = fitting(apo_pocket1_coord, pocket1_coord);
+	pocket2_coord = fitting(apo_pocket1_coord, pocket2_coord);
+
+	// TODO
 }
 
 void ProAnalysis::print_energy_results()

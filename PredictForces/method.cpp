@@ -17,7 +17,8 @@ VectorXd rotate(VectorXd coord, Vector3d axis, double angle)
 	rotmat += (1 - cos(angle)) * (axis * axis.transpose());
 	rotmat += cos(angle) * Matrix3d::Identity();
 
-	Map<Matrix3Xd> xyz(coord.data(), 3, coord.size() / 3);
+	size_t lenN = coord.size() / 3;
+	Map<Matrix3Xd> xyz(coord.data(), 3, lenN);
 	Vector3d center = xyz.rowwise().mean();
 	xyz.colwise() -= center;
 
@@ -137,14 +138,69 @@ double calc_average(VectorXd force)
 	return sqdist.sum() / sqdist.size();
 }
 
-MatrixXd gen_distmat(VectorXd coord)
+MatrixXd gen_distmat(DistMatType t, VectorXd coord, double cutoff)
 {
 	size_t resn = coord.size() / 3;
-	MatrixXd distmat = MatrixXd::Zero(resn, resn);
-	for (size_t i = 0; i < resn; ++i)
-		for (size_t j = i + 1; j < resn; ++j)
-			distmat(j, i) = distmat(i, j) = sqrt(pow(coord(3 * i) - coord(3 * j), 2) + pow(coord(3 * i + 1) - coord(3 * j + 1), 2) + pow(coord(3 * i + 2) - coord(3 * j + 2), 2));
-
+	MatrixXd distmat;
+	Vector3d coordi;
+	Array3d coordij;
+	double dist = 0.0;
+	if (t == Dist)
+	{
+		distmat = MatrixXd::Zero(resn, resn);
+		for (size_t i = 0; i < resn; ++i)
+		{
+			coordi = coord.block(3 * i, 1, 3, 1);
+			for (size_t j = i + 1; j < resn; ++j)
+			{
+				coordij = coordi - coord.block(3 * j, 1, 3, 1);
+				dist = sqrt(coordij.pow(2).sum());
+				distmat(j, i) = distmat(i, j) = dist;
+			}
+		}
+	}
+	else if (t == XYZdiff || t == XYZdiffLtCutoff)
+	{
+		distmat = MatrixXd::Zero(resn, 3 * resn);
+		if (t == XYZdiff)
+		{
+			for (size_t i = 0; i < resn; ++i)
+			{
+				coordi = coord.block(3 * i, 1, 3, 1);
+				for (size_t j = i + 1; j < resn; ++j)
+				{
+					coordij = coordi - coord.block(3 * j, 1, 3, 1);
+					distmat(i, 3 * j) = coordij(0);
+					distmat(i, 3 * j + 1) = coordij(1);
+					distmat(i, 3 * j + 2) = coordij(2);
+					distmat(j, 3 * i) = -coordij(0);
+					distmat(j, 3 * i + 1) = -coordij(1);
+					distmat(j, 3 * i + 2) = -coordij(2);
+				}
+			}
+		}
+		else
+		{
+			for (size_t i = 0; i < resn; ++i)
+			{
+				coordi = coord.block(3 * i, 1, 3, 1);
+				for (size_t j = i + 1; j < resn; ++j)
+				{
+					coordij = coordi - coord.block(3 * j, 1, 3, 1);
+					dist = sqrt(coordij.pow(2).sum());
+					if (dist < cutoff)
+					{
+						distmat(i, 3 * j) = coordij(0);
+						distmat(i, 3 * j + 1) = coordij(1);
+						distmat(i, 3 * j + 2) = coordij(2);
+						distmat(j, 3 * i) = -coordij(0);
+						distmat(j, 3 * i + 1) = -coordij(1);
+						distmat(j, 3 * i + 2) = -coordij(2);
+					}
+				}
+			}
+		}
+	}
 	return distmat;
 }
 
@@ -211,28 +267,38 @@ Matrix3d euler_rotation_matrix(Vector3d degrees)
 	return rmat;
 }
 
-Matrix3Xd coords_derivate(Matrix3Xd coord, MatrixXd distmat_0, MatrixXd distmat, MatrixXi contactmap, double k)
+VectorXd coords_derivate(VectorXd coord, MatrixXd distmat_0, MatrixXd distmat, ArrayXXd kmat)
 {
-	Matrix3Xd dR = Matrix3Xd::Zero(3, coord.cols());
-	for (size_t i = 0; i < size_t(distmat_0.rows()); ++i)
+	assert(distmat_0.cols() == distmat_0.rows());
+	assert(distmat.cols() == distmat.rows());
+	assert(kmat.cols() == kmat.rows());
+	assert(distmat_0.rows() == distmat.rows() == kmat.rows());
+	assert(coord.size() == 3 * distmat_0.rows());
+
+	size_t lenN = distmat_0.rows(); // N
+
+	VectorXd dR = VectorXd::Zero(3 * lenN);
+
+	// Distance Matrix : XYZdiff - N x 3N
+	MatrixXd xyzdiff = gen_distmat(XYZdiff, coord);
+	// Matrix { (dist - dist0) * k / dist0 } - N x N
+	MatrixXd coeff = (distmat - distmat_0).array() * kmat / distmat.array();
+
+	double coeffij = 0.0;
+	for (size_t i = 0; i < lenN; ++i)
 	{
-		Vector3d ri = coord.col(i);
-		for (size_t j = i + 1; j < size_t(distmat_0.cols()); ++j)
+		for (size_t j = i + 1; j < lenN; ++j)
 		{
-			Vector3d rij = ri - coord.col(j);
-			double frac = 1 - distmat_0(i, j) / distmat(i, j);
-			if (contactmap(i, j) == 2 || contactmap(i, j) == 3)
-			{
-				dR(0, i) += k * frac * rij(0);
-				dR(1, i) += k * frac * rij(1);
-				dR(2, i) += k * frac * rij(2);
-			}
+			coeffij = coeff(i, j);
+			dR(3 * i) += xyzdiff(i, 3 * j) * coeffij;
+			dR(3 * i + 1) += xyzdiff(i, 3 * j + 1) * coeffij;
+			dR(3 * i + 2) += xyzdiff(i, 3 * j + 2) * coeffij;
 		}
 	}
 	return dR;
 }
 
-Vector3d euler_degrees_derivative(Vector3d r, Vector3d dvdr, Vector3d degrees)
+Vector3d euler_degrees_derivate(Vector3d r, Vector3d dvdr, Vector3d degrees)
 {
 	double rx = r[0], ry = r[1], rz = r[2];
 	double dv_drx = dvdr[0], dv_dry = dvdr[1], dv_drz = dvdr[2];
@@ -264,6 +330,15 @@ Vector3d euler_degrees_derivative(Vector3d r, Vector3d dvdr, Vector3d degrees)
 	Vector3d dDegv;
 	dDegv << dv_dvarphi, dv_dphi, dv_dtheta;
 	return dDegv;
+}
+
+VectorXd degrees_derivate(VectorXd coord, VectorXd dR, Vector3d vcenter, Vector3d degrees)
+{
+	size_t lenN = coord.size() / 3;
+	VectorXd dDeg = VectorXd::Zero(3 * lenN);
+	for (size_t i = 0; i < lenN; ++i)
+		dDeg.block(3 * i, 1, 3, 1) = euler_degrees_derivate(coord.block(3 * i, 1, 3, 1) - vcenter, dR.col(i), degrees);
+	return dDeg;
 }
 
 
