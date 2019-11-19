@@ -131,7 +131,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="defines.h" />
-    <ClInclude Include="handle_io.h" />
+    <ClInclude Include="HandleMessage.h" />
     <ClInclude Include="method.h" />
     <ClInclude Include="Minimization.h" />
     <ClInclude Include="Pro.h" />
@@ -139,8 +139,8 @@
     <ClInclude Include="read_pdb.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="HandleMessage.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="handle_io.cpp" />
     <ClCompile Include="method.cpp" />
     <ClCompile Include="Minimization.cpp" />
     <ClCompile Include="Pro.cpp" />

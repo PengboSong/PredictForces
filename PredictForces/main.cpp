@@ -3,19 +3,19 @@
 
 #include <nlohmann/json.hpp>
 
-#include <boost/filesystem.hpp>
-#include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
 #include "defines.h"
-#include "handle_io.h"
 #include "Pro.h"
 #include "ProAnalysis.h"
 
-namespace filesys = boost::filesystem;
 using json = nlohmann::json;
+
+/* <--- Message Handler ---> */
+const char logFilename[8] = "log.txt";
+HandleMessage Log(logFilename);
 
 void read_settings(PredictForcesSettings &settings)
 {
@@ -27,7 +27,7 @@ void read_settings(PredictForcesSettings &settings)
 		std::ifstream file_settings(settings_path);
 		if (!file_settings.is_open())
 		{
-			handle_message(
+			Log.handle_message(
 				MSG_ERROR,
 				boost::format("Can not open settings JSON file %1.") % settings_path
 			);
@@ -117,7 +117,7 @@ int main()
 
 	if (!filesys::is_directory(workdir))
 	{
-		handle_message(
+		Log.handle_message(
 			MSG_ERROR,
 			boost::format("Can not find directory %1%.") % workdir.string()
 		);
@@ -132,7 +132,7 @@ int main()
 
 	if (settings.E.pdb.empty())
 	{
-		handle_message(
+		Log.handle_message(
 			MSG_ERROR,
 			"Apo state structure must be loaded."
 		);

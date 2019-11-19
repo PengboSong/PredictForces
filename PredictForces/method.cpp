@@ -237,13 +237,7 @@ MatrixXd gen_differ(MatrixXd X, MatrixXd Y)
 		return diffmat;
 	}
 	else
-	{
-		handle_message(
-			MSG_WARNING,
-			"Can only generate a diff matrix for two matrixes with the same shape."
-		);
 		return MatrixXd();
-	}
 }
 
 std::list<size_t> gen_pocket(double cutoff, VectorXd dist2ligand)
@@ -256,10 +250,12 @@ std::list<size_t> gen_pocket(double cutoff, VectorXd dist2ligand)
 				pocket.push_back(i);
 	}
 	else
-		handle_message(
+	{
+		Log.handle_message(
 			MSG_ERROR,
 			boost::format("Given cutoff is too short. Minimum possible cutoff is %1$.2f.") % dist2ligand.minCoeff()
 		);
+	}
 	return pocket;
 }
 
@@ -342,15 +338,15 @@ void BGD(VectorXd &coeff, MatrixXd X, VectorXd Y, BGDpara paras, bool checkinf)
 
 	for (size_t k = 0; k < paras.niteration; ++k)
 	{
-		handle_message(MSG_EMPTY, "*---*---*---*---*---*");
-		handle_message(
+		HandleMessage::print(MSG_EMPTY, "*---*---*---*---*---*");
+		HandleMessage::print(
 			MSG_EMPTY,
 			boost::format("Step: %1d") % (k + 1)
 		);
 
 		cost = (X * coeff - Y).dot(X * coeff - Y) / 2 / nsample;
 
-		handle_message(
+		HandleMessage::print(
 			MSG_EMPTY,
 			boost::format("Cost: %1$.4f") % cost
 		);
@@ -358,14 +354,14 @@ void BGD(VectorXd &coeff, MatrixXd X, VectorXd Y, BGDpara paras, bool checkinf)
 		if (k > 0 && abs(cost - prev_cost) < paras.convergence)
 		{
 			converge_flag = true;
-			handle_message(
+			HandleMessage::print(
 				MSG_EMPTY,
 				boost::format("Gradient: %1$.6f") % gradient
 			);
 			break;
 		}
 
-		handle_message(MSG_EMPTY, "*---*---*---*---*---*");
+		HandleMessage::print(MSG_EMPTY, "*---*---*---*---*---*");
 
 		prev_cost = cost;
 		gradient = ((X * coeff - Y).transpose() * X).transpose() / nsample;
@@ -383,7 +379,7 @@ void BGD(VectorXd &coeff, MatrixXd X, VectorXd Y, BGDpara paras, bool checkinf)
 		{
 			if (isinf<double>(cost))
 			{
-				handle_message(
+				HandleMessage::print(
 					MSG_WARNING,
 					boost::format("Reach infinity in %1% steps.") % (k + 1)
 				);
@@ -394,7 +390,7 @@ void BGD(VectorXd &coeff, MatrixXd X, VectorXd Y, BGDpara paras, bool checkinf)
 
 	if (!converge_flag)
 	{
-		handle_message(
+		HandleMessage::print(
 			MSG_WARNING,
 			boost::format("BGD does not converge in %1% steps.") % paras.niteration
 		);

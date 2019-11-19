@@ -22,18 +22,18 @@ Pro::Pro(std::string fpath, ProConfigs configs)
 	k_inter = configs.k_inter;
 	if (k_intra == k_inter)
 	{
-		handle_message(
+		Log.handle_message(
 			MSG_INFO,
 			boost::format("Spring constant = %1$.1f Kcal/(mol A^2).") % k_intra
 		);
 	}
 	else
 	{
-		handle_message(
+		Log.handle_message(
 			MSG_INFO,
 			boost::format("Intra Spring constant = %1$.1f Kcal/(mol A^2).") % k_intra
 		);
-		handle_message(
+		Log.handle_message(
 			MSG_INFO,
 			boost::format("Inter Spring constant = %1$.1f Kcal/(mol A^2).") % k_inter
 		);
@@ -43,25 +43,25 @@ Pro::Pro(std::string fpath, ProConfigs configs)
 	cutoff_inter = configs.cutoff_inter;
 	if (cutoff_intra == cutoff_inter)
 	{
-		handle_message(
+		Log.handle_message(
 			MSG_INFO,
 			boost::format("Cutoff = %1$.1f A.") % cutoff_intra
 		);
 	}
 	else
 	{
-		handle_message(
+		Log.handle_message(
 			MSG_INFO,
 			boost::format("Intra Cutoff = %1$.1f A.") % cutoff_intra
 		);
-		handle_message(
+		Log.handle_message(
 			MSG_INFO,
 			boost::format("Inter Cutoff = %1$.1f A.") % cutoff_inter
 		);
 	}
 
 	read(fpath);
-	handle_message(
+	Log.handle_message(
 		MSG_INFO,
 		boost::format("Successfully loaded protein at path %1%") % fpath
 	);
@@ -70,7 +70,7 @@ Pro::Pro(std::string fpath, ProConfigs configs)
 	gen_distmat();
 	gen_contact();
 	pairn = contact_pairs.size();
-	handle_message(
+	Log.handle_message(
 		MSG_INFO,
 		"Coordinate matrix, distance matrix, contact map have been generated for this protein."
 	);
@@ -78,7 +78,7 @@ Pro::Pro(std::string fpath, ProConfigs configs)
 	if (with_ligand_flag)
 	{
 		gen_dist2ligand();
-		handle_message(
+		Log.handle_message(
 			MSG_INFO,
 			"Residue distance to ligand has been calculated."
 		);
@@ -168,7 +168,7 @@ void Pro::read(std::string fpath)
 		ligandatomn = ligandatomid;
 	}
 	else
-		handle_message(
+		Log.handle_message(
 			MSG_ERROR,
 			boost::format("Unbale to open file %1%.") % fpath
 		);
@@ -336,7 +336,7 @@ MatrixXd Pro::gen_covariance(MatrixXd hessian)
 		*/
 	}
 	else
-		handle_message(
+		Log.handle_message(
 			MSG_ERROR,
 			boost::format("Hessian matrix has %1% zero modes. Please check it before constructing covariance matrix.") % zeromoden
 		);
@@ -433,8 +433,8 @@ void Pro::show_contact_pairs()
 	boost::format pairsformat("(%1%, %2%)");
 	for (std::vector<ContactPair>::iterator it = contact_pairs.begin(); it != contact_pairs.end(); ++it)
 		pairsbuf += (pairsformat % it->first % it->second).str();
-	handle_message(
+	Log.handle_message(
 		MSG_RESULT,
-		"Contact pairs:" + pairsbuf
+		"Contact pairs number:" + pairsbuf
 	);
 }

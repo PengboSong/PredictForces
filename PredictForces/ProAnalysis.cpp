@@ -21,21 +21,21 @@ ProAnalysis::ProAnalysis(Pro apo, Pro binding, Pro allostery, Pro complex)
 		if (!ProS.empty())
 		{
 			if (ProE.get_resn() != ProS.get_resn())
-				handle_message(MSG_ERROR, "Apo state protein and binding state protein do not have equal residue numbers.");
+				Log.handle_message(MSG_ERROR, "Apo state protein and binding state protein do not have equal residue numbers.");
 
 			preprocess(POCKETS);
 		}
 		if (!ProA.empty())
 		{
 			if (ProE.get_resn() != ProA.get_resn())
-				handle_message(MSG_ERROR, "Apo state protein and allostery state protein do not have equal residue numbers.");
+				Log.handle_message(MSG_ERROR, "Apo state protein and allostery state protein do not have equal residue numbers.");
 
 			preprocess(POCKETA);
 		}
 		if (!ProAS.empty())
 		{
 			if (ProE.get_resn() != ProAS.get_resn())
-				handle_message(MSG_ERROR, "Apo state protein and complex state protein do not have equal residue numbers.");
+				Log.handle_message(MSG_ERROR, "Apo state protein and complex state protein do not have equal residue numbers.");
 
 			preprocess(POCKETAS);
 		}
@@ -87,11 +87,11 @@ void ProAnalysis::preprocess(Pockets m)
 	pro(m).coord = targetpro->get_procoord();
 
 	pro(m).fitcoord = fitting(apo_procoord, pro(m).coord);
-	handle_message(MSG_INFO, "Fitting process succeed.");
+	Log.handle_message(MSG_INFO, "Fitting process succeed.");
 	pro(m).displacement = calc_displacement(apo_procoord, pro(m).coord);
-	handle_message(MSG_INFO, "Calculating displacement succeed.");
+	Log.handle_message(MSG_INFO, "Calculating displacement succeed.");
 	pro(m).rmsd = calc_rmsd(pro(m).displacement);
-	handle_message(MSG_RESULT, boost::format("RMSD between apo state and %1% state from PDB file: %2$.4f A.") % keyword % pro(m).rmsd);
+	Log.handle_message(MSG_RESULT, boost::format("RMSD between apo state and %1% state from PDB file: %2$.4f A.") % keyword % pro(m).rmsd);
 	
 	gen_pocket(m, pocket_cutoff);
 	show_pocket(m);
@@ -105,11 +105,11 @@ void ProAnalysis::preprocess(Pockets m)
 	grep_pocket_coord(fixed_holo, pro(m).coord, pocket_members(m));
 
 	pocket(m).coord = fitting(fixed_apo, fixed_holo);
-	handle_message(MSG_INFO, "Fitting pocket process succeed.");
+	Log.handle_message(MSG_INFO, "Fitting pocket process succeed.");
 	pocket(m).displacement = calc_displacement(fixed_apo, pocket(m).coord);
-	handle_message(MSG_INFO, "Calculating pocket displacement succeed.");
+	Log.handle_message(MSG_INFO, "Calculating pocket displacement succeed.");
 	pocket(m).rmsd = calc_rmsd(pocket(m).displacement);
-	handle_message(MSG_RESULT, boost::format("RMSD from %1% state PDB file: %2$.4f A.") % keyword % pocket(m).rmsd);
+	Log.handle_message(MSG_RESULT, boost::format("RMSD from %1% state PDB file: %2$.4f A.") % keyword % pocket(m).rmsd);
 
 	pro(m).preprocess = true;
 }
@@ -154,7 +154,7 @@ void ProAnalysis::interactive_pocket(Pockets m)
 			catch (boost::bad_lexical_cast)
 			{
 				convert_flag = false;
-				handle_message(MSG_EMPTY, "No residue ID given. Please enter again.");
+				HandleMessage::print(MSG_EMPTY, "No residue ID given. Please enter again.");
 			}
 
 			if (convert_flag)
@@ -171,7 +171,7 @@ void ProAnalysis::interactive_pocket(Pockets m)
 			catch (boost::bad_lexical_cast)
 			{
 				convert_flag = false;
-				handle_message(MSG_EMPTY, "No residue ID given. Please enter again.");
+				HandleMessage::print(MSG_EMPTY, "No residue ID given. Please enter again.");
 			}
 
 			if (convert_flag)
@@ -188,7 +188,7 @@ void ProAnalysis::interactive_pocket(Pockets m)
 			catch (boost::bad_lexical_cast)
 			{
 				convert_flag = false;
-				handle_message(MSG_EMPTY, "Illegal cutoff length given. Please enter again.");
+				HandleMessage::print(MSG_EMPTY, "Illegal cutoff length given. Please enter again.");
 			}
 
 			if (convert_flag)
@@ -220,7 +220,7 @@ void ProAnalysis::interactive_pocket(Pockets m)
 		}
 		else
 		{
-			handle_message(MSG_EMPTY, "Unknown command.");
+			HandleMessage::print(MSG_EMPTY, "Unknown command.");
 		}
 		cmd.clear();
 	}
@@ -250,7 +250,7 @@ void ProAnalysis::interactive()
 		else if (cmd == "LFmethod")
 			show_LFmethod_detail();
 		else
-			handle_message(MSG_EMPTY, "Unknown command.");
+			HandleMessage::print(MSG_EMPTY, "Unknown command.");
 		cmd.clear();
 	}
 }
@@ -293,17 +293,17 @@ void ProAnalysis::show_LFmethod_detail()
 	{
 	case NormalEquation:
 		// Normal Equation
-		handle_message(MSG_INFO, "Multiple Linear Fitting using normal equation.");
+		Log.handle_message(MSG_INFO, "Multiple Linear Fitting using normal equation.");
 		break;
 	case BatchGradientDescent:
 		// Batch Gradient Descent
-		handle_message(MSG_INFO, "Multiple Linear Fitting using batch gradient descent.");
-		handle_message(MSG_INFO, boost::format("Using learning step %1$.2e") % BGDparameters.learning_rate);
-		handle_message(MSG_INFO, boost::format("Using convergence %1$.2e") % BGDparameters.convergence);
-		handle_message(MSG_INFO, boost::format("Using maximum iteration times %1%") % BGDparameters.niteration);
+		Log.handle_message(MSG_INFO, "Multiple Linear Fitting using batch gradient descent.");
+		Log.handle_message(MSG_INFO, boost::format("Using learning step %1$.2e") % BGDparameters.learning_rate);
+		Log.handle_message(MSG_INFO, boost::format("Using convergence %1$.2e") % BGDparameters.convergence);
+		Log.handle_message(MSG_INFO, boost::format("Using maximum iteration times %1%") % BGDparameters.niteration);
 		break;
 	default:
-		handle_message(MSG_WARNING, "Invalid LF method mode.");
+		Log.handle_message(MSG_WARNING, "Invalid LF method mode.");
 	}
 }
 
@@ -361,46 +361,18 @@ void ProAnalysis::gen_pocket_force(Pockets m)
 	}
 }
 
-void ProAnalysis::minimization_calc_energy(bool & flag, Pockets m)
-{
-	MinPocket.single_pocket(pocket(m).members, pocket(m).force, pocket(m).coord, pro(m).equilibrium_coord);
-	flag = MinPocket.convergence();
-	MinPocket.clear();
-	if (flag)
-		pocket(m).access_force = true;
-	calc_energy_unknown(pocket(m).access_force, pro(m).G, pocket(m).force, pro(m).equilibrium_coord);
-}
-
-void ProAnalysis::equilibrium_coord_rmsd(Pockets m)
-{
-	VectorXd displacement_complex = pro(m).equilibrium_coord - fitting(pro(m).equilibrium_coord, pro(m).coord);
-	double rmsd_complex = calc_rmsd(displacement_complex);
-	handle_message(MSG_RESULT, boost::format("RMSD of equilibrium coordinates with initial state: %1$.4f A.") % rmsd_complex);
-
-	VectorXd displacement_apo = fitting(apo_procoord, pro(m).equilibrium_coord) - apo_procoord;
-	double rmsd_apo = calc_rmsd(displacement_apo);
-	handle_message(MSG_RESULT, boost::format("RMSD of equilibrium coordinates with apo state: %1$.4f A.") % rmsd_apo);
-}
-
 void ProAnalysis::gen_free_energy()
 {
 	if (pro(POCKETS).preprocess && pro(POCKETA).preprocess)
 	{
-		bool minimization_status = false;
-		
-		minimization_calc_energy(minimization_status, POCKETS);
+		energy_minimization(FixPocket, POCKETS);
+		check_EM_diff(POCKETS);
 
-		equilibrium_coord_rmsd(POCKETS);
-
-		minimization_calc_energy(minimization_status, POCKETA);
-
-		equilibrium_coord_rmsd(POCKETA);
+		energy_minimization(FixPocket, POCKETA);
+		check_EM_diff(POCKETA);
 
 		pocket(POCKETAS).force = pocket(POCKETS).force + pocket(POCKETA).force;
-		
-		MinPocket.single_pocket(pocket(POCKETAS).force, pro(POCKETAS).equilibrium_coord);
-		minimization_status = MinPocket.convergence();
-		calc_energy_unknown(pocket(POCKETAS).access_force, pro(POCKETAS).G, pocket(POCKETAS).force, pro(POCKETAS).equilibrium_coord);
+		energy_minimization(OnlyForce, POCKETS);
 
         ddG = pro(POCKETAS).G.total - pro(POCKETS).G.total - pro(POCKETA).G.total;
 
@@ -421,65 +393,29 @@ void ProAnalysis::gen_free_energy()
 			as = POCKETS;
 		}
 
-		bool minimization_status = false;
-
-		minimization_calc_energy(minimization_status, s);
-
+		energy_minimization(FixPocket, s);
+		check_EM_diff(s);
 		pocket(POCKETAS).force = pocket(s).force;
 
-		MinPocket.single_pocket_with_force(pocket(POCKETAS).members, pocket(POCKETAS).force, pocket(POCKETAS).coord, pro(POCKETAS).equilibrium_coord);
-		minimization_status = MinPocket.convergence();
-		MinPocket.clear();
-		if (minimization_status)
-			pocket(POCKETAS).access_force = true;
-		calc_energy_unknown(pocket(POCKETAS).access_force, pro(POCKETAS).G, pocket(POCKETAS).force, pro(POCKETAS).equilibrium_coord);
-		
-		size_t i = 0, len = pocket_members(s).size() * 3;
-		VectorXd new_pocket_coord = VectorXd::Zero(len);
-		VectorXd new_apo_pocket_coord = VectorXd::Zero(len);
-		grep_pocket_coord(new_pocket_coord, pro(POCKETAS).equilibrium_coord, pocket_members(s));
-		grep_pocket_coord(new_apo_pocket_coord, apo_procoord, pocket_members(s));
+		energy_minimization(FixPocketWithForce, POCKETAS);
+		check_EM_diff(POCKETAS);
 
-		double rmsd_full = calc_rmsd(new_pocket_coord, fitting(new_apo_pocket_coord, new_pocket_coord));
+		size_t pocketn = pocket_members(s).size() * 3;
+		VectorXd pocketcoord = VectorXd::Zero(pocketn), pocketcoord_apo = VectorXd::Zero(pocketn);
+		grep_pocket_coord(pocketcoord, pro(POCKETAS).equilibrium_coord, pocket_members(s));
+		grep_pocket_coord(pocketcoord_apo, apo_procoord, pocket_members(s));
+
+		double rmsd_pocket = calc_rmsd(pocketcoord, fitting(pocketcoord_apo, pocketcoord));
+		Log.handle_message(MSG_RESULT, boost::format("RMSD of pocket coordinates with domain coordinates in apo state structure: %1$.4f A.") % rmsd_pocket);
 
 		pocket(as).force = pocket(POCKETAS).force - pocket(s).force;
-
-		MinPocket.single_pocket(pocket(as).force, pro(as).equilibrium_coord);
-		minimization_status = MinPocket.convergence();
-		calc_energy_unknown(pocket(as).access_force, pro(as).G, pocket(as).force, pro(as).equilibrium_coord);
-
+		energy_minimization(OnlyForce, as);
+		
 		ddG = pro(POCKETAS).G.total - pro(s).G.total - pro(as).G.total;
-
-		VectorXd s_pocket_displacement = pro(POCKETS).equilibrium_coord - fitting(pro(s).equilibrium_coord, pro(s).coord);
-		double s_pocket_rmsd = calc_rmsd(s_pocket_displacement);
-		handle_message(MSG_RESULT, boost::format("RMSD from complex state PDB file: %1$.4f A.") % s_pocket_rmsd);
-
-		VectorXd AS_displacement = pro(POCKETS).equilibrium_coord - fitting(pro(POCKETAS).equilibrium_coord, pro(POCKETAS).coord);
-		double AS_rmsd = calc_rmsd(AS_displacement);
-		handle_message(MSG_RESULT, boost::format("RMSD from complex state PDB file: %1$.4f A.") % AS_rmsd);
-
-		double s_pocket_pearson = calc_correlation(
-			fitting(apo_procoord, pro(s).coord) - apo_procoord,
-			pro(POCKETAS).equilibrium_coord - apo_procoord
-		);
-		handle_message(
-			MSG_RESULT,
-			boost::format("Pearson between real structure and structure calculated according to current pocket: %1$.4f") % s_pocket_pearson
-		);
-
-		double AS_pearson = calc_correlation(
-			fitting(apo_procoord, pro(POCKETAS).coord) - apo_procoord,
-			pro(POCKETAS).equilibrium_coord - apo_procoord
-		);
-		handle_message(
-			MSG_RESULT,
-			boost::format("Pearson between real structure and structure calculated according to current pocket: %1$.4f") % AS_pearson
-		);
-
 		print_energy_results();
 	}
 	else
-		handle_message(MSG_ERROR, "Lack necessary protein information.");
+		Log.handle_message(MSG_ERROR, "Lack necessary protein information.");
 }
 
 void ProAnalysis::write_matrix(MatrixXd mat, std::string writepath)
@@ -489,10 +425,10 @@ void ProAnalysis::write_matrix(MatrixXd mat, std::string writepath)
 	{
 		matf << mat.format(CleanFmt);
 		matf.close();
-		handle_message(MSG_INFO, boost::format("Matrix has been written to %1%.") % writepath);
+		Log.handle_message(MSG_INFO, boost::format("Matrix has been written to %1%.") % writepath);
 	}
 	else
-		handle_message(MSG_WARNING, boost::format("Can not open file %1%.") % writepath);
+		Log.handle_message(MSG_WARNING, boost::format("Can not open file %1%.") % writepath);
 }
 
 void ProAnalysis::write_matrix_binary(MatrixXd mat, std::string writepath)
@@ -513,10 +449,10 @@ void ProAnalysis::write_matrix_binary(MatrixXd mat, std::string writepath)
 		matf.write((char *)&M[0], Msize * sizeof(double));
 		matf.close();
 		delete[] M;
-		handle_message(MSG_INFO, boost::format("Matrix (binary data) has been written to %1%.") % writepath);
+		Log.handle_message(MSG_INFO, boost::format("Matrix (binary data) has been written to %1%.") % writepath);
 	}
 	else
-		handle_message(MSG_WARNING, boost::format("Can not open file %1%.") % writepath);
+		Log.handle_message(MSG_WARNING, boost::format("Can not open file %1%.") % writepath);
 }
 
 void ProAnalysis::read_matrix_binary(MatrixXd & mat, std::string fpath)
@@ -540,12 +476,12 @@ void ProAnalysis::read_matrix_binary(MatrixXd & mat, std::string fpath)
 		delete[] M;
 	}
 	else
-		handle_message(MSG_WARNING, boost::format("Can not open file %1%.") % fpath);
+		Log.handle_message(MSG_WARNING, boost::format("Can not open file %1%.") % fpath);
 }
 
 std::string ProAnalysis::write_path(std::string fname)
 {
-	filesys::path workdir = workdir_path;
+	filesys::path workdir = workdirPath;
 	return (workdir / fname).string();
 }
 
@@ -564,6 +500,30 @@ void ProAnalysis::switch_LFmethod(VectorXd & coeff, MatrixXd X, VectorXd Y)
 	}
 }
 
+void ProAnalysis::energy_minimization(EMType em, Pockets m)
+{
+	switch (em)
+	{
+	case FixPocket:
+		MinPocket.single_pocket(pocket(m).members, pocket(m).coord);
+		break;
+	case FixPocketWithForce:
+		MinPocket.single_pocket(pocket(m).members, pocket(m).force, pocket(m).coord);
+		break;
+	case OnlyForce:
+		MinPocket.single_pocket(pocket(m).force);
+		break;
+	default:
+		Log.handle_message(MSG_WARNING, "Energy minimization task type is not specified.");
+	}
+	if (!MinPocket.complete())
+		return;
+	pocket(m).access_force = MinPocket.convergence();
+	pocket(m).force = MinPocket.pocket_force();
+	pro(m).equilibrium_coord = MinPocket.equilibrium_coord();
+	pro(m).G = MinPocket.energy();
+}
+
 double ProAnalysis::calc_model_rmsd(bool flag, VectorXd pocket_force, VectorXd refcoord)
 {
 	if (flag)
@@ -574,7 +534,7 @@ double ProAnalysis::calc_model_rmsd(bool flag, VectorXd pocket_force, VectorXd r
 	}
 	else
 	{
-		handle_message(MSG_WARNING, "Can not calculate model RMSD without pocket force generated. Call \"gen_pocket*_force\" function first.");
+		Log.handle_message(MSG_WARNING, "Can not calculate model RMSD without pocket force generated. Call \"gen_pocket*_force\" function first.");
 		return 0.0;
 	}
 }
@@ -621,7 +581,7 @@ double ProAnalysis::calc_model_correlation(bool flag, VectorXd pocket_force, Vec
 	}
 	else
 	{
-		handle_message(MSG_WARNING, "Can not calculate model correlation without pocket force generated. Call \"gen_pocket*_force\" function first.");
+		Log.handle_message(MSG_WARNING, "Can not calculate model correlation without pocket force generated. Call \"gen_pocket*_force\" function first.");
 		return 0.0;
 	}
 }
@@ -672,7 +632,7 @@ void ProAnalysis::show_pocket(PocketList pocket)
 		buf += std::to_string(*it + 1) + " ";
 	}
 
-	handle_message(MSG_RESULT, buf);
+	Log.handle_message(MSG_RESULT, buf);
 }
 void ProAnalysis::test_pocket(bool flag, bool info, PocketList pocket, VectorXd displacement, VectorXd pocket_force, VectorXd refcoord)
 {
@@ -681,51 +641,51 @@ void ProAnalysis::test_pocket(bool flag, bool info, PocketList pocket, VectorXd 
 		show_pocket(pocket);
 		if (info)
 		{
-			handle_message(
+			Log.handle_message(
 				MSG_RESULT,
 				boost::format("RMSD between real structure and structure calculated according to current pocket: %1% A.") % calc_model_rmsd(flag, pocket_force, refcoord)
 			);
-			handle_message(
+			Log.handle_message(
 				MSG_RESULT,
 				boost::format("Pearson between real structure and structure calculated according to current pocket: %1% A.") % calc_model_correlation(flag, displacement, pocket_force)
 			);
 		}
 		else
-			handle_message(MSG_WARNING, "Lack necessary protein information.");
+			Log.handle_message(MSG_WARNING, "Lack necessary protein information.");
 	}
 	else
-		handle_message(MSG_WARNING, "The binding pocket domain is not specificed.");
+		Log.handle_message(MSG_WARNING, "The binding pocket domain is not specificed.");
 }
 
 void ProAnalysis::show_pocket_force(bool access, PocketList pocket_members, VectorXd pocket_force)
 {
 	if (access)
 	{
-		handle_message(MSG_RESULT, "POCKET FORCE (PREDICT)");
-		handle_message(MSG_EMPTY, "*---*---*---*---*---*");
+		Log.handle_message(MSG_RESULT, "POCKET FORCE (PREDICT)");
+		Log.handle_message(MSG_EMPTY, "*---*---*---*---*---*");
 		for (PocketList::const_iterator it = pocket_members.cbegin(); it != pocket_members.cend(); ++it)
 		{
 			Vector3d resforce = Vector3d::Zero();
 			resforce << pocket_force(*it * 3), pocket_force(*it * 3 + 1), pocket_force(*it * 3 + 2);
-			handle_message(MSG_EMPTY, boost::format("RES %1% FORCE %2$.4f") % (*it + 1) % calc_norm(resforce));
+			Log.handle_message(MSG_EMPTY, boost::format("RES %1% FORCE %2$.4f") % (*it + 1) % calc_norm(resforce));
 		}
-		handle_message(MSG_EMPTY, "*---*---*---*---*---*");
+		Log.handle_message(MSG_EMPTY, "*---*---*---*---*---*");
 	}
 	else
-		handle_message(MSG_WARNING, "The binding pocket domain is not specificed.");
+		Log.handle_message(MSG_WARNING, "The binding pocket domain is not specificed.");
 }
 
 void ProAnalysis::show_pro_pocket_force(PocketList pocket, VectorXd pro_force)
 {
-	handle_message(MSG_RESULT, "POCKET FORCE (STRUCTURE)");
-	handle_message(MSG_EMPTY, "*---*---*---*---*---*");
+	Log.handle_message(MSG_RESULT, "POCKET FORCE (STRUCTURE)");
+	Log.handle_message(MSG_EMPTY, "*---*---*---*---*---*");
 	for (PocketList::iterator it = pocket.begin(); it != pocket.end(); ++it)
 	{
 		Vector3d resforce = Vector3d::Zero();
 		resforce << pro_force(*it * 3), pro_force(*it * 3 + 1), pro_force(*it * 3 + 2);
-		handle_message(MSG_EMPTY, boost::format("RES %1% FORCE %2$.4f") % (*it + 1) % calc_norm(resforce));
+		Log.handle_message(MSG_EMPTY, boost::format("RES %1% FORCE %2$.4f") % (*it + 1) % calc_norm(resforce));
 	}
-	handle_message(MSG_EMPTY, "*---*---*---*---*---*");
+	Log.handle_message(MSG_EMPTY, "*---*---*---*---*---*");
 }
 
 void ProAnalysis::show_pro_all_force(VectorXd pro_force)
@@ -742,11 +702,11 @@ void ProAnalysis::show_pro_all_force(VectorXd pro_force)
 		return a.second > b.second;
 	});
 
-	handle_message(MSG_RESULT, "PROTEIN FORCE");
-	handle_message(MSG_EMPTY, "*---*---*---*---*---*");
+	Log.handle_message(MSG_RESULT, "PROTEIN FORCE");
+	Log.handle_message(MSG_EMPTY, "*---*---*---*---*---*");
 	for (size_t i = 0; i < ProE.get_resn(); ++i)
-		handle_message(MSG_EMPTY, boost::format("RES %1% FORCE %2$.4f") % (forces[i].first + 1) % forces[i].second);
-	handle_message(MSG_EMPTY, "*---*---*---*---*---*");
+		Log.handle_message(MSG_EMPTY, boost::format("RES %1% FORCE %2$.4f") % (forces[i].first + 1) % forces[i].second);
+	Log.handle_message(MSG_EMPTY, "*---*---*---*---*---*");
 }
 
 bool ProAnalysis::in_pocket(PocketList pocket, size_t id)
@@ -763,15 +723,15 @@ void ProAnalysis::add_to_pocket(PocketList & pocket, size_t id)
 	if (id < ProE.get_resn())
 	{
 		if (in_pocket(pocket, id))
-			handle_message(MSG_INFO, "Given residue ID already in pocket.");
+			Log.handle_message(MSG_INFO, "Given residue ID already in pocket.");
 		else
 		{
 			pocket.push_back(id);
-			handle_message(MSG_INFO, boost::format("Add residue %1% to pocket.") % (id + 1));
+			Log.handle_message(MSG_INFO, boost::format("Add residue %1% to pocket.") % (id + 1));
 		}
 	}
 	else
-		handle_message(MSG_WARNING, "Given residue ID out of range.");
+		Log.handle_message(MSG_WARNING, "Given residue ID out of range.");
 }
 
 void ProAnalysis::remove_from_pocket(PocketList & pocket, size_t id)
@@ -784,14 +744,14 @@ void ProAnalysis::remove_from_pocket(PocketList & pocket, size_t id)
 				if (*it == id)
 				{
 					pocket.erase(it);
-					handle_message(MSG_INFO, boost::format("Remove residue %1% from pocket.") % (id + 1));
+					Log.handle_message(MSG_INFO, boost::format("Remove residue %1% from pocket.") % (id + 1));
 				}
 		}
 		else
-			handle_message(MSG_INFO, "Given residue ID not in pocket. Can not erase it.");
+			Log.handle_message(MSG_INFO, "Given residue ID not in pocket. Can not erase it.");
 	}
 	else
-		handle_message(MSG_WARNING, "Given residue ID out of range.");
+		Log.handle_message(MSG_WARNING, "Given residue ID out of range.");
 }
 
 void ProAnalysis::gen_pocket(bool has_ligand, PocketList & pocket, double cutoff, VectorXd dist2ligand)
@@ -807,13 +767,13 @@ void ProAnalysis::gen_pocket(bool has_ligand, PocketList & pocket, double cutoff
 					pocket.push_back(i);
 		}
 		else
-			handle_message(
+			Log.handle_message(
 				MSG_WARNING,
 				boost::format("Given cutoff is too short. Minimum possible cutoff is %1$.2f A.") % dist2ligand.minCoeff()
 			);
 	}
 	else
-		handle_message(MSG_WARNING, "Can not find ligand information.");
+		Log.handle_message(MSG_WARNING, "Can not find ligand information.");
 }
 
 void ProAnalysis::gen_pocket_force(bool & flag, VectorXd & pocket_force, PocketList pocket, VectorXd pro_force, VectorXd displacement)
@@ -856,96 +816,66 @@ void ProAnalysis::gen_pocket_force(bool & flag, VectorXd & pocket_force, VectorX
 	flag = true;
 }
 
-void ProAnalysis::calc_energy_known(bool flag, FreeEnergy & energy, PocketList pocket, VectorXd pro_force, MatrixXd distmat, VectorXd displacement)
+void ProAnalysis::check_EM_diff(Pockets m)
 {
-	if (flag)
-	{
-		VectorXd force = VectorXd::Zero(pro_force.rows());
-		for (PocketList::iterator it = pocket.begin(); it != pocket.end(); ++it)
-		{
-			force(*it * 3) = pro_force(*it * 3);
-			force(*it * 3 + 1) = pro_force(*it * 3 + 1);
-			force(*it * 3 + 2) = pro_force(*it * 3 + 2);
-		}
-		ArrayXXd distdiffmat = distmat - ProE.get_distmat();
-		// Distance matrix is symmetric, so protein internal energy is 2 * 2 = 4 folds of real value
-		energy.pro = (distdiffmat.pow(2) * ProE.get_kmat()).sum() / 4;
-		energy.pocket = -force.transpose() * displacement;
-		energy.total = energy.pro + energy.pocket;
-	}
-	else
-		handle_message(MSG_WARNING, "Can not calculate energy without pocket force generated. Call \"gen_pocket*_force\" function first.");
-}
+	double rmsd_em = calc_rmsd(pro(m).equilibrium_coord, fitting(pro(m).equilibrium_coord, pro(m).coord));
+	Log.handle_message(
+		MSG_RESULT,
+		boost::format("RMSD of coordinates between PDB file structure and minimized structure: %1$.4f A.") % rmsd_em
+	);
 
-void ProAnalysis::calc_energy_unknown(bool access, FreeEnergy & energy, VectorXd pocket_force, VectorXd equilibrium_coord)
-{
-	if (access)
-	{
-		ArrayXXd distdiffmat = gen_distmat(Dist, equilibrium_coord) - ProE.get_distmat();		
-		energy.pro = (distdiffmat.pow(2) * ProE.get_kmat()).sum() / 4;
-		VectorXd displacement = equilibrium_coord - ProE.get_procoord();
-		energy.pocket = -pocket_force.transpose() * displacement;
-		energy.total = energy.pro + energy.pocket;
-	}
-	else
-		handle_message(MSG_WARNING, "Can not calculate energy without pocket force generated. Call \"gen_pocket*_force\" function first.");
-}
-
-void ProAnalysis::align_multiple_pockets(PocketInfo pocket1, VectorXd & pocket1_coord, PocketInfo pocket2, VectorXd & pocket2_coord)
-{
-	PocketList *poc1 = &(pocket1.members), *poc2 = &(pocket2.members);
-	VectorXd apo_pocket1_coord = VectorXd::Zero(poc1->size() * 3), apo_pocket2_coord = VectorXd::Zero(poc2->size() * 3);
-	grep_pocket_coord(apo_pocket1_coord, apo_procoord, *poc1);
-	grep_pocket_coord(apo_pocket2_coord, apo_procoord, *poc2);
-	pocket1_coord = fitting(apo_pocket1_coord, pocket1_coord);
-	pocket2_coord = fitting(apo_pocket1_coord, pocket2_coord);
-
-	// TODO
+	VectorXd displacement = fitting(apo_procoord, pro(m).coord) - apo_procoord;
+	VectorXd displacement_em = pro(m).equilibrium_coord - apo_procoord;
+	double pearson = calc_correlation(displacement, displacement_em);
+	Log.handle_message(
+		MSG_RESULT,
+		boost::format("Pearson between PDB file structure and minimized structure: %1$.4f") % pearson
+	);
 }
 
 void ProAnalysis::print_energy_results()
 {
-	handle_message(MSG_RESULT, "FREE ENERGY RESULTS");
-	handle_message(MSG_EMPTY, "*---*---*---*---*---*");
-	handle_message(
+	Log.handle_message(MSG_RESULT, "Energy results:");
+	Log.handle_message(MSG_EMPTY, "*---*---*---*---*---*");
+	Log.handle_message(
 		MSG_EMPTY,
 		boost::format("Free energy for binding state structure S: %1$.3f Kcal/mol.") % pro(POCKETS).G.total
 	);
-	handle_message(
+	Log.handle_message(
 		MSG_EMPTY,
 		boost::format("Pro: %1$.3f Kcal/mol.") % pro(POCKETS).G.pro
 	);
-	handle_message(
+	Log.handle_message(
 		MSG_EMPTY,
 		boost::format("Pocket: %1$.3f Kcal/mol.") % pro(POCKETS).G.pocket
 	);
-	handle_message(
+	Log.handle_message(
 		MSG_EMPTY,
 		boost::format("Free energy for allostery state structure A: %1$.3f Kcal/mol.") % pro(POCKETA).G.total
 	);
-	handle_message(
+	Log.handle_message(
 		MSG_EMPTY,
 		boost::format("Pro: %1$.3f Kcal/mol.") % pro(POCKETA).G.pro
 	);
-	handle_message(
+	Log.handle_message(
 		MSG_EMPTY,
 		boost::format("Pocket: %1$.3f Kcal/mol.") % pro(POCKETA).G.pocket
 	);
-	handle_message(
+	Log.handle_message(
 		MSG_EMPTY,
 		boost::format("Free energy for complex state structure AS: %1$.3f Kcal/mol.") % pro(POCKETAS).G.total
 	);
-	handle_message(
+	Log.handle_message(
 		MSG_EMPTY,
 		boost::format("Pro: %1$.3f Kcal/mol.") % pro(POCKETAS).G.pro
 	);
-	handle_message(
+	Log.handle_message(
 		MSG_EMPTY,
 		boost::format("Pocket: %1$.3f Kcal/mol.") % pro(POCKETAS).G.pocket
 	);
-	handle_message(
+	Log.handle_message(
 		MSG_EMPTY,
-		boost::format("Change of free energy: : %1$.3f Kcal/mol.") % ddG
+		boost::format("Change of free energy: %1$.3f Kcal/mol.") % ddG
 	);
-	handle_message(MSG_EMPTY, "*---*---*---*---*---*");
+	Log.handle_message(MSG_EMPTY, "*---*---*---*---*---*");
 }

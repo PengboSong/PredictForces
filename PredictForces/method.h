@@ -1,14 +1,10 @@
 #pragma once
-#include <list>
 #include <cmath>
-#include <Eigen/Dense>
 #include <Eigen/QR>
-#include <boost/format.hpp>
 
 #include "defines.h"
-#include "handle_io.h"
 
-using namespace Eigen;
+extern HandleMessage Log;
 
 Matrix3Xd coord_vec2mat(VectorXd coord);
 

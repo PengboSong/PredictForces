@@ -1,22 +1,15 @@
 #pragma once
-#include <algorithm>
 #include <fstream>
-#include <list>
-#include <utility>
-#include <boost/format.hpp>
-#include <boost/filesystem.hpp>
+#include <algorithm>
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string.hpp>
 
 #include "defines.h"
-#include "handle_io.h"
 #include "method.h"
 #include "Pro.h"
 #include "Minimization.h"
 
-using namespace Eigen;
-
-namespace filesys = boost::filesystem;
+extern HandleMessage Log;
 
 class ProAnalysis
 {
@@ -119,6 +112,8 @@ private:
 
 	void switch_LFmethod(VectorXd &coeff, MatrixXd X, VectorXd Y);
 
+	void energy_minimization(EMType em, Pockets m);
+
 	double calc_model_rmsd(bool access, VectorXd pocket_force, VectorXd refcoord);
 
 	double calc_model_correlation(bool access, VectorXd pocket_force, VectorXd displacement);
@@ -147,24 +142,12 @@ private:
 
 	void gen_pocket_force(bool & access, VectorXd & pocket_force, VectorXd fixed_force, PocketList pocket_members, PocketList fixed_pocket, VectorXd pro_force, VectorXd displacement);
 
-	void calc_energy_known(bool access, FreeEnergy & energy, PocketList pocket_members, VectorXd pro_force, MatrixXd distmat, VectorXd displacement);
-
-	void calc_energy_unknown(bool access, FreeEnergy & energy, VectorXd pocket_force, VectorXd equilibrium_coord);
-
-	void align_multiple_pockets(PocketInfo pocket1, VectorXd & pocket1_coord, PocketInfo pocket2, VectorXd & pocket2_coord);
-
 	// Pack functions for convenience
-	void minimization_calc_energy(bool & flag, Pockets m);
-
-	void equilibrium_coord_rmsd(Pockets m);
+	void check_EM_diff(Pockets m);
 
 	void print_energy_results();
 
 	Pro ProE, ProS, ProA, ProAS;
-
-	double ES_pearson;
-	double EA_pearson;
-	double EAS_pearson;
 
 	PocketContainer pockets;
 
@@ -183,9 +166,6 @@ private:
 	double ddG_deduce1 = 0.0;
 	double ddG_deduce2 = 0.0;
 
-	// Matrix formats
-	IOFormat CleanFmt = IOFormat(4, 0, ", ", "\n", "[", "]");
-
 	// Multiple linear fitting method
 	LFmethods LFMETHOD = BatchGradientDescent;
 	Minimization MinPocket;
@@ -195,5 +175,5 @@ private:
 	double k_intra = 10.0;
 	double pocket_cutoff = 4.5;
 
-	std::string workdir_path;
+	std::string workdirPath;
 };

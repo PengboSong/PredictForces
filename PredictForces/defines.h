@@ -7,8 +7,14 @@
 #include <map>
 #include <utility>
 
+#include <boost/format.hpp>
+#include <boost/filesystem.hpp>
+namespace filesys = boost::filesystem;
+
 #include <Eigen/Dense>
 using namespace Eigen;
+
+#include "HandleMessage.h"
 
 /* <--- Constants ---> */
 
@@ -42,6 +48,12 @@ enum DistMatType : uint8_t {
 	Dist,
 	XYZdiff,
 	XYZdiffLtCutoff
+};
+
+enum EMType : uint8_t {
+	FixPocket,
+	FixPocketWithForce,
+	OnlyForce
 };
 
 /* <--- Alias ---> */

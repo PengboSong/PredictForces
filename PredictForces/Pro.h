@@ -1,19 +1,11 @@
 #pragma once
-#include <fstream>
-#include <string>
-#include <vector>
-#include <map>
 #include <set>
-#include <utility>
 #include <limits>
-#include <boost/format.hpp>
-#include <Eigen/Dense>
 
 #include "defines.h"
-#include "handle_io.h"
 #include "read_pdb.h"
 
-using namespace Eigen;
+extern HandleMessage Log;
 
 class Pro
 {
